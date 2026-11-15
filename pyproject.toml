@@ -1,0 +1,49 @@
+[project]
+name = "spotify-top"
+version = "0.1.0"
+description = "Local Spotify library analytics foundation"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.163.1",
+    "httpx>=0.28.1",
+    "jinja2>=3.1.6",
+    "pydantic>=2,<3",
+    "pydantic-settings>=2.16.3",
+    "sqlalchemy>=2,<3",
+    "uvicorn>=0.54.0",
+]
+
+[project.scripts]
+spotify-analytics = "spotify_analytics.main:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.5.0",
+    "ruff>=0.17.5",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/spotify_analytics"]
+
+[tool.hatch.build]
+include = [
+  "src/spotify_analytics/**/*.py",
+  "src/spotify_analytics/web/templates/**/*.html",
+  "src/spotify_analytics/web/static/**/*",
+]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]

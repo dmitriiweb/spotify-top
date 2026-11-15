@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101814">
+    <title>Spotify Library Analytics</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}">
+    <script src="{{ url_for('static', path='/app.js') }}" defer></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Spotify Library Analytics home">
+          <span class="brand-mark" aria-hidden="true">S</span>
+          <span>LIBRARY / LOCAL</span>
+        </a>
+        <span class="phase-tag">PHASE 0 FOUNDATION</span>
+      </header>
+
+      <section class="hero" aria-labelledby="hero-title">
+        <p class="eyebrow"><span class="pulse" aria-hidden="true"></span> YOUR LIBRARY, ON YOUR MACHINE</p>
+        <h1 id="hero-title">A clearer view<br>starts <span>here.</span></h1>
+        <p class="intro">The foundation is running. This phase provides the local app, database, and a lightweight health check—analytics and Spotify sync are not available yet.</p>
+        <div class="actions">
+          <a class="button primary" href="/docs">Explore API docs <span aria-hidden="true">↗</span></a>
+          <a class="button secondary" href="https://fastapi.tiangolo.com/">FastAPI reference</a>
+        </div>
+      </section>
+
+      <section class="status-card" aria-labelledby="status-heading">
+        <div>
+          <p class="eyebrow">LOCAL SERVICE</p>
+          <h2 id="status-heading">App health</h2>
+          <p id="health-message" class="status-message" role="status" aria-live="polite">Checking database connection…</p>
+        </div>
+        <span id="health-indicator" class="health-indicator checking" aria-label="Checking" role="img"></span>
+      </section>
+
+      <section class="setup" aria-labelledby="setup-heading">
+        <div class="section-heading">
+          <p class="eyebrow">GETTING STARTED</p>
+          <h2 id="setup-heading">Start with demo data</h2>
+          <p>Initialize the local SQLite database and load the bundled, deterministic sample library.</p>
+        </div>
+        <div class="steps">
+          <article class="step">
+            <span class="step-number">01</span>
+            <h3>Initialize database</h3>
+            <code>uv run spotify-analytics --init-db</code>
+          </article>
+          <article class="step">
+            <span class="step-number">02</span>
+            <h3>Load sample library</h3>
+            <code>uv run spotify-analytics --load-demo</code>
+          </article>
+          <article class="step">
+            <span class="step-number">03</span>
+            <h3>Run the app</h3>
+            <code>uv run spotify-analytics</code>
+          </article>
+        </div>
+        <p class="note">Sample records are local only. Spotify credentials are optional and are not needed for Phase 0.</p>
+      </section>
+
+      <footer>
+        <span>LOCAL FIRST · NO SPOTIFY CONNECTION</span>
+        <span>HEALTH CHECK <a href="/health">/health</a></span>
+      </footer>
+    </main>
+  </body>
+</html>
