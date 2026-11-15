@@ -47,10 +47,10 @@ class SyncService:
         if not account_id:
             raise ValueError("account_id must not be empty")
 
-        # SQLite's immediate write transaction serializes claims across service
-        # instances, including the first claim when the table has no row.
+        # Use an immediate SQLite write lock so concurrent claims serialize
+        # before checking whether the active account is already running.
         with self._session_factory() as session:
-            session.connection().exec_driver_sql("BEGIN IMMEDIATE")
+            session.connection(execution_options={"sqlite_begin_mode": "IMMEDIATE"})
             try:
                 state = session.scalar(select(SyncState).limit(1))
                 if state is None:
@@ -88,6 +88,18 @@ class SyncService:
             except SyncInProgress:
                 session.rollback()
                 raise
+
+    def recover_interrupted(self) -> SyncStatusResponse:
+        """Mark persisted in-flight work failed when the application starts."""
+        with self._session_factory() as session:
+            session.execute(
+                update(SyncState)
+                .where(SyncState.status == "running")
+                .values(status="failed", error="Synchronization was interrupted")
+            )
+            session.commit()
+            state = session.scalar(select(SyncState).limit(1))
+            return self._response(state)
 
     def progress(self, processed_tracks: int) -> None:
         if processed_tracks < 0:

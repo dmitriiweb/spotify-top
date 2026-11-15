@@ -9,7 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 
 def create_db_engine(database_url: str) -> Engine:
-    """Create a SQLite engine with foreign-key enforcement enabled."""
+    """Create a SQLite engine with foreign keys and explicit transactions."""
     url = make_url(database_url)
     if url.get_backend_name() != "sqlite":
         raise ValueError("Only SQLite database URLs are supported")
@@ -25,12 +25,26 @@ def create_db_engine(database_url: str) -> Engine:
     engine = create_engine(url, **options)
 
     @event.listens_for(engine, "connect")
-    def _enable_foreign_keys(
+    def _configure_sqlite_transactions(
         dbapi_connection: object, connection_record: object
     ) -> None:
+        # sqlite3's legacy mode skips BEGIN for SELECT, so a Session transaction
+        # alone does not guarantee a consistent snapshot across multiple reads.
+        dbapi_connection.isolation_level = None  # type: ignore[attr-defined]
         cursor = dbapi_connection.cursor()  # type: ignore[attr-defined]
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
+
+    @event.listens_for(engine, "begin")
+    def _begin_sqlite_transaction(connection: object) -> None:
+        begin_mode = connection.get_execution_options().get(  # type: ignore[attr-defined]
+            "sqlite_begin_mode", "DEFERRED"
+        )
+        if begin_mode not in ("DEFERRED", "IMMEDIATE", "EXCLUSIVE"):
+            raise ValueError(f"Unsupported SQLite begin mode: {begin_mode}")
+        connection.exec_driver_sql(  # type: ignore[attr-defined]
+            f"BEGIN {begin_mode}"
+        )
 
     return engine
 

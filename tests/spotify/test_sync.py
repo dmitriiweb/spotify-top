@@ -310,6 +310,30 @@ def test_failure_preserves_library_and_success_timestamp(database):
         assert db.scalars(select(SyncState.account_id)).all() == ["account-a"]
 
 
+def test_recover_interrupted_preserves_library_counts_and_success_time(database):
+    _, factory = database
+    service = SyncService(factory)
+    service.start("account-a")
+    successful = service.publish("account-a", [saved("track-1")], 1)
+    service.start("account-a")
+    service.progress(7)
+
+    recovered = service.recover_interrupted()
+
+    assert recovered.status == "failed"
+    assert recovered.error == "Synchronization was interrupted"
+    assert recovered.last_successful_sync == successful.last_successful_sync
+    assert (
+        recovered.saved_tracks,
+        recovered.artists,
+        recovered.albums,
+        recovered.processed_tracks,
+    ) == (successful.saved_tracks, successful.artists, successful.albums, 7)
+    assert service.recover_interrupted() == recovered
+    with factory() as db:
+        assert db.get(SavedTrack, "track-1") is not None
+
+
 def test_database_failure_rolls_back_entire_snapshot_and_success_state(database):
     engine, factory = database
     service = SyncService(factory)
