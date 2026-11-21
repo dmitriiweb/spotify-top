@@ -15,11 +15,19 @@
 <label class="field"><span>Saved from</span><input type="date" name="added_from"></label>
 <label class="field"><span>Saved through</span><input type="date" name="added_to"></label>
 {%- endmacro %}
-{% macro pages(id, label) -%}
+{% macro pages(id, label, jump=false) -%}
 <div class="pagination" id="{{ id }}-pagination" role="group" aria-label="{{ label }} pages" hidden>
   <button type="button" class="button" data-page="-1" disabled>Previous</button>
   <span data-page-label role="status"></span>
   <button type="button" class="button" data-page="1" disabled>Next</button>
+  {% if jump %}
+  <form class="page-jump" data-page-jump>
+    <label for="{{ id }}-page-number">Page</label>
+    <input id="{{ id }}-page-number" type="number" name="page" min="1" step="1" required aria-describedby="{{ id }}-page-max">
+    <span id="{{ id }}-page-max" data-page-max></span>
+    <button type="submit" class="button">Go</button>
+  </form>
+  {% endif %}
 </div>
 {%- endmacro %}
 {% macro track_sort(id, label) -%}
@@ -45,9 +53,9 @@
     <meta name="theme-color" content="#0d0a17">
     <title>Spotify Top · Saved Library Analytics</title>
     <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', path='/favicon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}?v=library-ui-3">
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}?v=library-ui-4">
     <script src="/static/plotly.min.js" defer></script>
-    <script src="{{ url_for('static', path='/app.js') }}?v=library-ui-2" defer></script>
+    <script src="{{ url_for('static', path='/app.js') }}?v=library-ui-3" defer></script>
   </head>
   <body>
     <svg class="sprite" aria-hidden="true">
@@ -219,7 +227,7 @@
               <div><h2 id="artist-directory-heading" tabindex="-1">Artist directory</h2><p id="artists-result-count" class="result-count" role="status"></p></div>
               <label class="field"><span class="sr-only">Sort artists</span><select id="artist-sort"><option value="saved_tracks_desc">Most saved tracks</option><option value="name_asc">Name A–Z</option></select></label>
             </div>
-            {{ pages('artists', 'Artist directory') }}
+            {{ pages('artists', 'Artist directory', jump=true) }}
             <div id="artists-list" class="entity-list"></div>
           </article>
           <article class="panel detail-panel" id="artist-detail" aria-label="Artist profile" hidden>

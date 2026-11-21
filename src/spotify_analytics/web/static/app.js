@@ -503,13 +503,20 @@
 
   function pageControls(key, data) {
     const root = $(PAGE_ROOT[key]);
-    const [previous, next] = $$("button", root);
+    const [previous, next] = $$("[data-page]", root);
     previous.disabled = !data || data.offset <= 0;
     next.disabled = !data || data.offset + data.limit >= data.total;
     root.hidden = !data || data.total <= data.limit;
     $("[data-page-label]", root).textContent = data?.total
       ? `${number(data.offset + 1)}–${number(Math.min(data.offset + data.limit, data.total))} of ${number(data.total)}`
       : "";
+    const jump = $("[data-page-jump]", root);
+    if (jump && data) {
+      const lastPage = Math.max(1, Math.ceil(data.total / data.limit));
+      jump.elements.page.max = lastPage;
+      jump.elements.page.value = Math.floor(data.offset / data.limit) + 1;
+      $("[data-page-max]", jump).textContent = `of ${number(lastPage)}`;
+    }
   }
 
   async function renderArtists(signal) {
@@ -968,6 +975,14 @@
     const root = $(selector);
     for (const control of $$("[data-page]", root)) control.addEventListener("click", () => {
       state.offsets[key] = Math.max(0, state.offsets[key] + Number(control.dataset.page) * PAGE_SIZE[key]);
+      loadScreen();
+    });
+    const jump = $("[data-page-jump]", root);
+    jump?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const offset = (jump.elements.page.valueAsNumber - 1) * PAGE_SIZE[key];
+      if (state.offsets[key] === offset) return;
+      state.offsets[key] = offset;
       loadScreen();
     });
   }

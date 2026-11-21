@@ -321,6 +321,9 @@ button.legend-key:hover { background: var(--elevated); }
 .track-table .track-mobile-meta { display: none; }
 .pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; color: var(--secondary); font-size: 13px; }
 .pagination .button { min-height: 36px; }
+.page-jump { display: flex; align-items: center; gap: 8px; }
+.page-jump input { width: 72px; min-height: 36px; padding-inline: 8px; }
+.page-jump input::-webkit-inner-spin-button { opacity: 1; }
 
 /* Insights, timeline summary, and settings */
 .insight-list { display: grid; gap: 3px; }
