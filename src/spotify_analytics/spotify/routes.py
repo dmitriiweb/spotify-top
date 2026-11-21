@@ -139,9 +139,13 @@ def _set_cookie(response: RedirectResponse, request: Request, cookie: str) -> No
     )
 
 
-def _query_error(request: Request, allowed: set[str]) -> JSONResponse | None:
+def _query_error(
+    request: Request, allowed: set[str], *, ignore_unknown: bool = False
+) -> JSONResponse | None:
     params: QueryParams = request.query_params
-    keys = [key for key, _ in params.multi_items()]
+    keys = [
+        key for key, _ in params.multi_items() if not ignore_unknown or key in allowed
+    ]
     unknown = sorted(set(keys) - allowed)
     duplicates = sorted({key for key in keys if keys.count(key) > 1})
     details = [{"field": key, "message": "is not allowed"} for key in unknown]
@@ -176,7 +180,8 @@ async def login(request: Request):
 
 @router.get("/auth/callback")
 async def callback(request: Request):
-    invalid = _query_error(request, {"code", "state", "error"})
+    # OAuth clients must ignore unrecognized authorization response parameters.
+    invalid = _query_error(request, {"code", "state", "error"}, ignore_unknown=True)
     if invalid:
         return invalid
     params = request.query_params

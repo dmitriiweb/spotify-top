@@ -106,13 +106,15 @@ def test_login_rejects_query_and_status_is_schema_valid(tmp_path):
 def test_callback_checks_state_before_denial_and_rejects_duplicate_parameters(tmp_path):
     app = _app(tmp_path)
     with TestClient(app, follow_redirects=False) as client:
-        invalid = client.get("/auth/callback?error=access_denied&state=wrong")
+        invalid = client.get("/auth/callback?error=access_denied&state=wrong&ubi=extra")
         _error(invalid, 400, "invalid_oauth_state")
         unicode_state = client.get("/auth/callback?error=access_denied&state=%E9%9B%AA")
         _error(unicode_state, 400, "invalid_oauth_state")
         login = client.get("/auth/login")
         state = parse_qs(urlsplit(login.headers["location"]).query)["state"][0]
-        denied = client.get(f"/auth/callback?error=access_denied&state={state}")
+        denied = client.get(
+            f"/auth/callback?error=access_denied&state={state}&error_description=ignored"
+        )
         _error(denied, 400, "oauth_denied")
         replay = client.get(f"/auth/callback?error=access_denied&state={state}")
         _error(replay, 400, "invalid_oauth_state")
@@ -120,8 +122,8 @@ def test_callback_checks_state_before_denial_and_rejects_duplicate_parameters(tm
         state = parse_qs(urlsplit(login.headers["location"]).query)["state"][0]
         missing_code = client.get(f"/auth/callback?state={state}")
         _error(missing_code, 422, "invalid_query")
-        _error(client.get("/auth/callback?state=x&state=y"), 422, "invalid_query")
-        _error(client.get("/auth/callback?state=x&extra=y"), 422, "invalid_query")
+        for key in ("code", "state", "error"):
+            _error(client.get(f"/auth/callback?{key}=x&{key}=y"), 422, "invalid_query")
 
 
 def test_callback_authenticates_then_full_sync_closes_clients(
@@ -230,7 +232,10 @@ def test_callback_authenticates_then_full_sync_closes_clients(
         params = parse_qs(urlsplit(login.headers["location"]).query)
         state = params["state"][0]
         app.state.spotify_runtime.http_client_factory = factory
-        callback = client.get(f"/auth/callback?code=one-time-code&state={state}")
+        callback = client.get(
+            "/auth/callback",
+            params={"code": "one-time-code", "state": state, "ubi": "provider-value"},
+        )
         assert callback.status_code == 302 and callback.headers["location"] == "/"
         assert (
             "private-access" not in callback.text
