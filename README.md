@@ -63,22 +63,22 @@ The app requests access to saved tracks and stores the synchronized library in S
 
 The dashboard provides:
 
-- **Overview:** saved-track, artist, and album counts; saved-library duration and date range; recent additions; data-backed insights; top artists; and saved-track timeline and distribution charts.
-- **Artists:** a ranked artist directory with pagination, ranking/name sort, and artist details including matching saved tracks, duration, rank, and Spotify profile links.
-- **Tracks:** a paginated saved-track table with recently added, oldest added, name, and duration sorting.
-- **Timeline:** monthly or yearly saved-track counts with a selectable date range.
-- **Discovery:** deterministic observations about top saved artists, the largest save month, and total saved-track duration. These describe saved-library data, not listening behavior.
+- **Overview:** saved-track, artist, and album counts; total duration and save dates; the top ten artists; artist distribution by saved-track count; the saved-track timeline; and recent additions with artwork and Spotify links where available.
+- **Artists:** a directory with 50 artists per page, ranking and name sort, and profiles with saved tracks, dates, total duration, and Spotify links where available.
+- **Tracks:** a paginated library with album artwork, artist credits, duration, and sorting by save date, title, or duration.
+- **Timeline:** monthly or yearly saved-track counts, a selectable date range, and a summary of the busiest month and average additions per month.
+- **Discovery:** insights about the top saved artist, busiest saving month, and library duration, plus charts by release decade, duration, or explicit content.
 - **Settings:** Spotify connection and sync status, last successful sync, counts, and the action to synchronize the library.
 
-The shared filters are inclusive saved-date bounds, text search, explicit/clean content, album ID, and artist scope where applicable. Search is a case-insensitive substring search over track, album, and credited artist names. Filters intersect; date bounds apply to when a track was saved, not its album release date. Artist and track views also have search and sort controls. Filters apply across dashboard data, and active filters can be removed one at a time or cleared.
+Use the shared search field to find track, album, or credited artist names. Open **Filters** to set inclusive saved-date bounds, explicit or clean content, or a Spotify album ID. Filters intersect and stay active when you change screens. Remove them with the filter chips or select **Clear all**.
 
-Select a top-artist bar to open that artist. Select a timeline bar to filter tracks to that period, or a slice of the explicit-content chart to filter tracks by content. Release-decade and duration slices open Tracks without applying a filter because the API does not accept those filters. An artist with one saved track appears in the directory. A track with multiple artists counts once for each credited artist and once in the overall track total.
+Select a top-artist bar to open that artist. Select a timeline point or use **Browse periods and counts** to open the tracks saved during that period. On Discovery, select an explicit-content category to filter Tracks. Release-decade and duration categories open Tracks without adding a filter. The artist distribution is a summary and does not filter the directory. A track with multiple artists counts once for each credited artist and once in the overall track total.
 
 Use the dashboard download controls to export filtered artists or tracks as CSV, or the full filtered report as JSON. The API routes are `GET /api/export/artists.csv`, `GET /api/export/tracks.csv`, and `GET /api/export/library.json`. These accept the common filter query parameters (`added_from`, `added_to`, `artist_id`, `album_id`, `q`, `explicit`), return all matching results without pagination, and reject unknown query parameters. Downloads are UTF-8 attachments named `artists.csv`, `tracks.csv`, and `library.json`. JSON includes filtered overview, artists, tracks, monthly and yearly timelines, distributions, and insights. CSV text is protected against spreadsheet formulas; JSON keeps the original text.
 
 Analytics run locally against persisted library data; no Spotify connection is required to browse existing data or use demo mode. The charts use a bundled Plotly asset and do not require a chart CDN. Empty libraries show empty states. Saved-track counts, dates, and analytics do not measure plays or listening frequency.
 
-Optional artist images can be unavailable offline. The demo uses sample image URLs that do not resolve; the dashboard shows a local fallback. These image requests can appear as network errors in browser tools, but do not stop charts or local analytics.
+Artist images and album covers can be unavailable offline. The demo uses sample image URLs that do not resolve. The dashboard shows local fallback artwork. These image requests can appear as network errors in browser tools, but do not stop charts or local analytics.
 
 ## Settings
 

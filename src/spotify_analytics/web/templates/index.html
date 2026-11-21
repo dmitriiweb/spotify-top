@@ -1,309 +1,315 @@
+{% macro icon(name) -%}
+<svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-{{ name }}"/></svg>
+{%- endmacro %}
+{% macro nav(id, label, glyph) -%}
+<a class="nav-link{% if id == 'settings' %} settings-link{% endif %}" href="#screen-{{ id }}" data-screen="{{ id }}" title="{{ label }}"{% if id == 'overview' %} aria-current="page"{% endif %}>{{ icon(glyph) }}<span>{{ label }}</span></a>
+{%- endmacro %}
+{% macro interval(id) -%}
+<fieldset class="segmented-control">
+  <legend class="sr-only">Time interval</legend>
+  <label><input class="sr-only" type="radio" name="{{ id }}-interval" value="month" data-interval checked><span>Monthly</span></label>
+  <label><input class="sr-only" type="radio" name="{{ id }}-interval" value="year" data-interval><span>Yearly</span></label>
+</fieldset>
+{%- endmacro %}
+{% macro date_fields() -%}
+<label class="field"><span>Saved from</span><input type="date" name="added_from"></label>
+<label class="field"><span>Saved through</span><input type="date" name="added_to"></label>
+{%- endmacro %}
+{% macro pages(id, label) -%}
+<div class="pagination" id="{{ id }}-pagination" role="group" aria-label="{{ label }} pages" hidden>
+  <button type="button" class="button" data-page="-1" disabled>Previous</button>
+  <span data-page-label role="status"></span>
+  <button type="button" class="button" data-page="1" disabled>Next</button>
+</div>
+{%- endmacro %}
+{% macro track_sort(id, label) -%}
+<label class="field"><span class="sr-only">{{ label }}</span>
+  <select id="{{ id }}">
+    <option value="added_at_desc">Recently added</option><option value="added_at_asc">Oldest added</option>
+    <option value="name_asc">Track name A–Z</option><option value="duration_desc">Longest duration</option>
+  </select>
+</label>
+{%- endmacro %}
+{% macro period_data(id) -%}
+<details class="period-data" id="{{ id }}-periods" hidden>
+  <summary>Browse periods and counts</summary>
+  <label class="field"><span>Saved tracks by period</span><select></select></label>
+  <button class="button" type="button">View period tracks {{ icon('arrow') }}</button>
+</details>
+{%- endmacro %}
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#101814">
-    <title>Spotify Library Analytics</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}">
+    <meta name="theme-color" content="#0d0a17">
+    <title>Spotify Top · Saved Library Analytics</title>
+    <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', path='/favicon.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}?v=library-ui-3">
     <script src="/static/plotly.min.js" defer></script>
-    <script src="{{ url_for('static', path='/app.js') }}" defer></script>
+    <script src="{{ url_for('static', path='/app.js') }}?v=library-ui-2" defer></script>
   </head>
   <body>
+    <svg class="sprite" aria-hidden="true">
+      <defs>
+        <symbol id="icon-record" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.1"/><path d="M6.3 12a5.7 5.7 0 0 1 5.7-5.7m5.7 5.7A5.7 5.7 0 0 1 12 17.7"/></symbol>
+        <symbol id="icon-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="6" height="6" rx="1"/><rect x="14.5" y="3.5" width="6" height="6" rx="1"/><rect x="3.5" y="14.5" width="6" height="6" rx="1"/><rect x="14.5" y="14.5" width="6" height="6" rx="1"/></symbol>
+        <symbol id="icon-artists" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2.5A4.5 4.5 0 0 1 7.5 13h3a4.5 4.5 0 0 1 4.5 4.5V20M16 5a3 3 0 0 1 0 6m2 3a4.5 4.5 0 0 1 3 4.3V20"/></symbol>
+        <symbol id="icon-tracks" viewBox="0 0 24 24"><path d="M9 17.5V5l11-2v12.5M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2.5"/><ellipse cx="17" cy="16" rx="3" ry="2.5"/></symbol>
+        <symbol id="icon-timeline" viewBox="0 0 24 24"><path d="M3 4v16h18M6 15l4-5 4 2 6-7"/><path d="M17 5h3v3"/></symbol>
+        <symbol id="icon-discovery" viewBox="0 0 24 24"><path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5L12 2Z"/></symbol>
+        <symbol id="icon-settings" viewBox="0 0 24 24"><path d="M10 3h4l.6 2.8 2.1 1.2 2.7-.9 2 3.5-2.1 1.9v2l2.1 1.9-2 3.5-2.7-.9-2.1 1.2L14 22h-4l-.6-2.8L7.3 18l-2.7.9-2-3.5 2.1-1.9v-2L2.6 9.6l2-3.5 2.7.9 2.1-1.2L10 3Z"/><circle cx="12" cy="12.5" r="3"/></symbol>
+        <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 5 5"/></symbol>
+        <symbol id="icon-filter" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/><path stroke-width="3.4" d="M9 5v2m6 4v2m-5 4v2"/></symbol>
+        <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M4 16v4h16v-4"/></symbol>
+        <symbol id="icon-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+        <symbol id="icon-calendar" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="15" rx="2"/><path d="M8 3v5m8-5v5M4 10h16"/></symbol>
+        <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+        <symbol id="icon-external" viewBox="0 0 24 24"><path d="M14 4h6v6m0-6-9 9m7 0v6H5V6h6"/></symbol>
+        <symbol id="icon-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+        <symbol id="icon-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3m-4 4v3"/></symbol>
+        <symbol id="icon-sync" viewBox="0 0 24 24"><path d="M4 10a8 8 0 0 1 14-4l2 3M20 4v5h-5m5 5a8 8 0 0 1-14 4l-2-3m0 5v-5h5"/></symbol>
+        <symbol id="icon-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5m0 4h.01"/></symbol>
+      </defs>
+    </svg>
     <a class="skip-link" href="#dashboard">Skip to dashboard</a>
     <div class="app-shell">
       <aside class="sidebar" aria-label="Dashboard navigation">
-        <a class="brand" href="/" aria-label="Spotify Library Analytics overview">
-          <span class="brand-mark" aria-hidden="true">S</span>
-          <span class="brand-copy"><strong>Library</strong><small>PERSONAL ANALYTICS</small></span>
+        <a class="brand" href="#screen-overview" data-screen="overview" aria-label="Spotify Top overview">
+          <span class="brand-mark">{{ icon('record') }}</span>
+          <span class="brand-copy"><strong>Spotify Top</strong><small>Saved library analytics</small></span>
         </a>
-        <p class="nav-label">WORKSPACE</p>
-        <nav class="primary-nav" aria-label="Primary">
-          <button class="nav-link is-active" type="button" data-screen="overview" aria-current="page">
-            <span aria-hidden="true">▦</span><span>Overview</span>
-          </button>
-          <button class="nav-link" type="button" data-screen="artists">
-            <span aria-hidden="true">♬</span><span>Artists</span>
-          </button>
-          <button class="nav-link" type="button" data-screen="tracks">
-            <span aria-hidden="true">≡</span><span>Tracks</span>
-          </button>
-          <button class="nav-link" type="button" data-screen="timeline">
-            <span aria-hidden="true">◷</span><span>Timeline</span>
-          </button>
-          <button class="nav-link" type="button" data-screen="discovery">
-            <span aria-hidden="true">✳</span><span>Discovery</span>
-          </button>
+        <p class="nav-label">Library</p>
+        <nav class="primary-nav" aria-label="Library">
+          {{ nav('overview', 'Overview', 'grid') }}
+          {{ nav('artists', 'Artists', 'artists') }}
+          {{ nav('tracks', 'Tracks', 'tracks') }}
+          {{ nav('timeline', 'Timeline', 'timeline') }}
+          {{ nav('discovery', 'Discovery', 'discovery') }}
         </nav>
-        <div class="sidebar-spacer"></div>
-        <div class="sidebar-note">
-          <span class="connection-dot" aria-hidden="true"></span>
-          <span><strong>Local library</strong><small id="sidebar-connection-status">Checking connection…</small></span>
+        <div class="sidebar-bottom">
+          {{ nav('settings', 'Settings', 'settings') }}
+          <div class="sidebar-note" role="status">
+            {{ icon('lock') }}<span><strong>Local library</strong><small id="sidebar-connection-status">Checking status…</small></span>
+          </div>
         </div>
-        <button class="nav-link settings-link" type="button" data-screen="settings">
-          <span aria-hidden="true">⚙</span><span>Settings</span>
-        </button>
       </aside>
 
       <main id="dashboard" class="main-content" tabindex="-1">
         <header class="topbar">
           <div>
-            <p class="eyebrow">YOUR MUSIC, IN CONTEXT</p>
-            <h1 id="page-title">Overview</h1>
+            <h1 id="page-title" tabindex="-1">Your Music Universe</h1>
+            <p id="page-description" class="page-description">Explore the artists, tracks, and patterns behind your saved music.</p>
           </div>
-          <div class="topbar-meta">
-            <span class="local-badge"><span aria-hidden="true"></span> Private &amp; local</span>
-            <a class="icon-link" href="/docs" aria-label="Open API documentation">API docs <span aria-hidden="true">↗</span></a>
-          </div>
+          <svg id="hero-record" class="hero-record" viewBox="0 0 142 78" fill="none" stroke="currentColor" aria-hidden="true">
+            <path d="M0 39h17m89 0h36M25 3v72m84-8h25M112 11h25" opacity=".34"/>
+            <circle cx="68" cy="39" r="36" opacity=".45"/><circle cx="68" cy="39" r="29" opacity=".26"/>
+            <circle cx="68" cy="39" r="21" opacity=".45"/><circle cx="68" cy="39" r="11" opacity=".8"/>
+            <circle cx="68" cy="39" r="3" fill="currentColor"/><path d="M32 39h6l4-6 5 12 5-6h5m22 0h5l6-10 6 19 5-9h7" stroke-width="1.4"/>
+          </svg>
         </header>
 
-        <div id="dashboard-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true">Loading your library…</div>
+        <section id="library-toolbar" class="filter-bar" aria-label="Library filters and export">
+          <div class="filter-toolbar">
+            <form id="library-search" class="search-field" role="search">
+              <label class="sr-only" for="search-query">Search library</label>
+              {{ icon('search') }}<input id="search-query" name="q" type="search" maxlength="200" placeholder="Search tracks, artists, or albums" autocomplete="off">
+            </form>
+            <details id="advanced-filters" class="disclosure control-disclosure">
+              <summary class="button">{{ icon('filter') }} Filters</summary>
+              <form id="filters-form" class="control-menu">
+                <div class="filter-fields">
+                  {{ date_fields() }}
+                  <label class="field"><span>Explicit content</span><select name="explicit">
+                    <option value="">Any</option><option value="false">Clean only</option><option value="true">Explicit only</option>
+                  </select></label>
+                  <label class="field"><span>Album ID</span><input name="album_id" type="search" autocomplete="off" placeholder="Spotify album ID"></label>
+                </div>
+                <div class="menu-actions">
+                  <button class="panel-link" id="clear-filters" type="button">Clear all</button>
+                  <button class="button primary" type="submit">Apply filters</button>
+                </div>
+              </form>
+            </details>
+            <details id="export-data" class="disclosure control-disclosure">
+              <summary class="button">{{ icon('download') }} Export</summary>
+              <div class="control-menu export-menu" aria-label="Download filtered library">
+                <a data-export download="artists.csv" href="/api/export/artists.csv">Artists CSV</a>
+                <a data-export download="tracks.csv" href="/api/export/tracks.csv">Tracks CSV</a>
+                <a data-export download="library.json" href="/api/export/library.json">Library JSON</a>
+              </div>
+            </details>
+          </div>
+          <div id="active-filters" class="active-filters" aria-live="polite" aria-label="Active filters"></div>
+        </section>
 
-        <section class="filter-bar" aria-labelledby="filters-heading">
-          <div class="filter-heading">
-            <div><p class="eyebrow">REFINE YOUR VIEW</p><h2 id="filters-heading">Library filters</h2></div>
-            <button class="text-button" id="clear-filters" type="button">Clear all</button>
+        <section id="screen-overview" class="screen screen-stack" aria-labelledby="page-title">
+          <div class="kpi-grid" aria-label="Library totals">
+            <article class="panel kpi-card kpi-featured">
+              <div class="kpi-top"><span>Saved tracks</span><span class="icon-tile">{{ icon('tracks') }}</span></div>
+              <strong id="overview-total-tracks" class="kpi-value" aria-busy="true">—</strong><span class="kpi-caption">Tracks in your collection</span>
+            </article>
+            <article class="panel kpi-card">
+              <div class="kpi-top"><span>Unique artists</span><span class="icon-tile" style="--tile-tone: var(--violet)">{{ icon('artists') }}</span></div>
+              <strong id="overview-total-artists" class="kpi-value" aria-busy="true">—</strong><span class="kpi-caption">Artists credited on those tracks</span>
+            </article>
+            <article class="panel kpi-card">
+              <div class="kpi-top"><span>Albums</span><span class="icon-tile" style="--tile-tone: var(--cyan)">{{ icon('record') }}</span></div>
+              <strong id="overview-total-albums" class="kpi-value" aria-busy="true">—</strong><span class="kpi-caption">Releases represented in your saves</span>
+            </article>
           </div>
-          <form id="filters-form" class="filters-form">
-            <label class="filter-field search-field" for="search-query">
-              <span>Search library</span>
-              <input id="search-query" name="q" type="search" maxlength="200" placeholder="Track, artist, or album">
-            </label>
-            <label class="filter-field" for="date-from">
-              <span>Added from</span>
-              <input id="date-from" name="added_from" type="date">
-            </label>
-            <label class="filter-field" for="date-to">
-              <span>Added to</span>
-              <input id="date-to" name="added_to" type="date">
-            </label>
-            <label class="filter-field" for="filter-explicit">
-              <span>Explicit content</span>
-              <select id="filter-explicit" name="explicit">
-                <option value="">Any</option>
-                <option value="false">Clean</option>
-                <option value="true">Explicit</option>
-              </select>
-            </label>
-            <label class="filter-field" for="filter-album-id">
-              <span>Album ID</span>
-              <input id="filter-album-id" name="album_id" type="search" autocomplete="off" placeholder="Optional Spotify album ID">
-            </label>
-            <button class="button filter-submit" type="submit">Apply filters</button>
-          </form>
-          <div class="export-actions" aria-label="Download filtered library">
-            <span>Download filtered data</span>
-            <a class="button secondary" data-export="artists" download="artists.csv" href="/api/export/artists.csv">Artists CSV</a>
-            <a class="button secondary" data-export="tracks" download="tracks.csv" href="/api/export/tracks.csv">Tracks CSV</a>
-            <a class="button secondary" data-export="library" download="library.json" href="/api/export/library.json">Library JSON</a>
+          <dl class="panel library-facts" aria-label="Library duration and dates">
+            <div><dt>Total duration</dt><dd id="overview-total-duration">—</dd></div>
+            <div><dt>First saved</dt><dd id="overview-first-saved">—</dd></div>
+            <div><dt>Last saved</dt><dd id="overview-last-saved">—</dd></div>
+          </dl>
+          <div id="overview-error" hidden></div>
+          <div class="overview-grid">
+            <article class="panel">
+              <div class="panel-heading"><div><h2>Top artists</h2><p>The top 10 by number of saved tracks</p></div><a class="panel-link" href="#screen-artists" data-screen="artists">View all artists {{ icon('arrow') }}</a></div>
+              <div id="top-artists-chart" class="rank-chart" aria-label="Top artists by saved tracks"></div>
+            </article>
+            <article class="panel artist-mix">
+              <div class="panel-heading"><div><h2>Artist distribution</h2><p>Artists grouped by how many of their tracks you saved</p></div></div>
+              <div id="artist-mix-state"></div>
+              <div id="artist-mix-content" class="donut-layout" hidden>
+                <figure class="donut-figure" aria-hidden="true">
+                  <div id="artist-distribution-chart" class="chart-container donut-chart"></div>
+                  <figcaption class="donut-center"><strong id="artist-mix-total" class="numeric"></strong><span>artists</span></figcaption>
+                </figure>
+                <ul id="artist-mix-legend" class="legend" aria-label="Artist distribution by saved-track count"></ul>
+              </div>
+            </article>
           </div>
-          <div class="active-filters-row">
-            <span class="active-label">ACTIVE</span>
-            <div id="active-filters" aria-live="polite" aria-label="Active filters">
-              <span class="filter-empty">No filters applied</span>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div><h2>Saved over time</h2><p>When tracks entered your library</p></div>
+              <div class="chart-actions">
+                {{ interval('overview') }}
+                <details class="disclosure control-disclosure range-disclosure">
+                  <summary class="button">{{ icon('calendar') }} Date range</summary>
+                  <form class="control-menu range-menu" data-range-form>
+                    <div class="range-controls">{{ date_fields() }}</div>
+                    <div class="menu-actions"><button class="panel-link" type="button" data-clear-range>Reset range</button><button class="button primary" type="submit">Apply range</button></div>
+                  </form>
+                </details>
+              </div>
             </div>
+            <div id="saved-timeline-chart" class="chart-container timeline-chart" role="img" aria-label="Saved tracks over time"></div>
+            {{ period_data('overview') }}
+            <a class="panel-link" href="#screen-timeline" data-screen="timeline">Explore timeline {{ icon('arrow') }}</a>
+          </article>
+
+          <div class="overview-grid">
+            <article class="panel">
+              <div class="panel-heading"><div><h2>Recent additions</h2><p>The latest saves in your library</p></div><a class="panel-link" href="#screen-tracks" data-screen="tracks">View tracks {{ icon('arrow') }}</a></div>
+              <div id="recent-additions" class="entity-list" aria-live="polite"></div>
+            </article>
+            <article class="panel">
+              <div class="panel-heading"><div><h2>Quick insights</h2><p>Details you might have missed</p></div><a class="panel-link" href="#screen-discovery" data-screen="discovery">Explore {{ icon('arrow') }}</a></div>
+              <div id="quick-insights" class="insight-list" aria-live="polite"></div>
+            </article>
           </div>
         </section>
 
-        <section id="screen-overview" class="screen is-active" aria-labelledby="overview-heading">
-          <div class="screen-heading">
-            <div><p class="eyebrow">YOUR COLLECTION</p><h2 id="overview-heading">Library at a glance</h2></div>
-            <p class="screen-description">A snapshot of the music you’ve saved.</p>
-          </div>
-          <div class="kpi-grid" aria-label="Library summary">
-            <article class="kpi-card">
-              <span class="kpi-icon" aria-hidden="true">♫</span>
-              <p>Saved tracks</p><strong id="overview-total-tracks">—</strong>
-              <span class="kpi-caption">in your library</span>
-            </article>
-            <article class="kpi-card">
-              <span class="kpi-icon" aria-hidden="true">♬</span>
-              <p>Artists</p><strong id="overview-total-artists">—</strong>
-              <span class="kpi-caption">represented in your saves</span>
-            </article>
-            <article class="kpi-card">
-              <span class="kpi-icon" aria-hidden="true">▤</span>
-              <p>Albums</p><strong id="overview-total-albums">—</strong>
-              <span class="kpi-caption">across your collection</span>
-            </article>
-            <article class="kpi-card">
-              <span class="kpi-icon" aria-hidden="true">↗</span>
-              <p>First saved</p><strong id="overview-first-saved">—</strong>
-              <span class="kpi-caption">earliest in your library</span>
-            </article>
-            <article class="kpi-card">
-              <span class="kpi-icon" aria-hidden="true">↘</span>
-              <p>Last saved</p><strong id="overview-last-saved">—</strong>
-              <span class="kpi-caption">most recently added</span>
-            </article>
-            <article class="kpi-card">
-              <span class="kpi-icon" aria-hidden="true">◷</span>
-              <p>Total duration</p><strong id="overview-total-duration">—</strong>
-              <span class="kpi-caption">saved-track runtime</span>
-            </article>
-          </div>
-          <div class="overview-grid">
-            <article class="panel list-panel">
-              <div class="panel-heading"><div><p class="eyebrow">JUST ADDED</p><h3>Recent additions</h3></div><button class="panel-link" type="button" data-screen="tracks">View tracks <span aria-hidden="true">→</span></button></div>
-              <div id="recent-additions" class="entity-list" aria-live="polite" aria-label="Recently saved tracks">
-                <p class="state-message">Loading recent additions…</p>
-              </div>
-            </article>
-            <article class="panel list-panel">
-              <div class="panel-heading"><div><p class="eyebrow">YOUR LIBRARY SNAPSHOT</p><h3>Quick insights</h3></div></div>
-              <div id="quick-insights" class="entity-list" aria-live="polite" aria-label="Quick library insights">
-                <p class="state-message">Loading your insights…</p>
-              </div>
-            </article>
-          </div>
-          <div class="overview-grid">
-            <article class="panel chart-panel">
-              <div class="panel-heading"><div><p class="eyebrow">MOST SAVED</p><h3>Top artists</h3></div><button class="panel-link" type="button" data-screen="artists">View artists <span aria-hidden="true">→</span></button></div>
-              <div id="top-artists-chart" class="chart-container" role="img" aria-label="Chart of your most saved artists">
-                <p class="state-message">Loading artist data…</p>
-              </div>
-            </article>
-            <article class="panel chart-panel">
-              <div class="panel-heading"><div><p class="eyebrow">COLLECTION MIX</p><h3>Saved track distribution</h3></div></div>
-              <label class="sr-only" for="distribution-dimension">Distribution category</label>
-              <select id="distribution-dimension" class="compact-select" name="dimension">
-                <option value="release_decade">Release decade</option>
-                <option value="duration">Track duration</option>
-                <option value="explicit">Explicit content</option>
-              </select>
-              <p class="chart-note">Clicking explicit categories applies that filter. Release decade and duration charts navigate to tracks without adding unsupported filters.</p>
-              <div id="artist-distribution-chart" class="chart-container" role="img" aria-label="Distribution of saved tracks">
-                <p class="state-message">Loading distribution…</p>
-              </div>
-            </article>
-          </div>
-          <article class="panel chart-panel timeline-preview">
-            <div class="panel-heading"><div><p class="eyebrow">SAVED OVER TIME</p><h3>Your library timeline</h3></div><button class="panel-link" type="button" data-screen="timeline">Explore timeline <span aria-hidden="true">→</span></button></div>
-            <div id="saved-timeline-chart" class="chart-container" role="img" aria-label="Saved tracks over time">
-              <p class="state-message">Loading timeline…</p>
+        <section id="screen-artists" class="screen artists-layout" aria-labelledby="page-title" hidden>
+          <article class="panel" id="artist-directory" aria-labelledby="artist-directory-heading">
+            <div class="panel-heading list-heading">
+              <div><h2 id="artist-directory-heading" tabindex="-1">Artist directory</h2><p id="artists-result-count" class="result-count" role="status"></p></div>
+              <label class="field"><span class="sr-only">Sort artists</span><select id="artist-sort"><option value="saved_tracks_desc">Most saved tracks</option><option value="name_asc">Name A–Z</option></select></label>
             </div>
+            {{ pages('artists', 'Artist directory') }}
+            <div id="artists-list" class="entity-list"></div>
+          </article>
+          <article class="panel detail-panel" id="artist-detail" aria-label="Artist profile" hidden>
+            <button class="panel-link directory-return" id="return-to-directory" type="button">Back to artist directory</button>
+            <div id="artist-detail-content" hidden>
+              <div class="artist-summary">
+                <div id="artist-detail-avatar"></div>
+                <div class="artist-summary-copy">
+                  <h2 id="artist-detail-name" tabindex="-1"></h2><p id="artist-detail-count" class="metadata"></p>
+                  <a id="artist-detail-link" class="panel-link" target="_blank" rel="noopener noreferrer" hidden>Open on Spotify {{ icon('external') }}</a>
+                </div>
+              </div>
+              <dl class="detail-facts">
+                <div><dt>First saved</dt><dd id="artist-first-saved">—</dd></div>
+                <div><dt>Last saved</dt><dd id="artist-last-saved">—</dd></div>
+                <div><dt>Total duration</dt><dd id="artist-detail-duration">—</dd></div>
+              </dl>
+              <div class="panel-heading artist-track-heading"><h3>Saved tracks</h3>{{ track_sort('artist-track-sort', 'Sort artist tracks') }}</div>
+            </div>
+            <div id="artist-track-list" class="entity-list"></div>
+            {{ pages('artist-tracks', 'Artist track') }}
           </article>
         </section>
 
-        <section id="screen-artists" class="screen" aria-labelledby="artists-heading" hidden>
-          <div class="screen-heading">
-            <div><p class="eyebrow">THE PEOPLE BEHIND THE MUSIC</p><h2 id="artists-heading">Artists</h2></div>
-            <p class="screen-description">Browse artists credited on your saved tracks.</p>
-          </div>
-          <div class="content-grid artists-layout">
-            <article class="panel list-panel">
-              <div class="panel-heading"><div><p class="eyebrow">YOUR ARTISTS</p><h3>Artist directory</h3></div><span id="artists-result-count" class="result-count">Loading…</span></div>
-              <label class="filter-field inline-search" for="artist-search"><span>Find an artist</span><input id="artist-search" type="search" placeholder="Search artists"></label>
-              <label class="filter-field sort-field" for="artist-sort"><span>Sort artists</span>
-                <select id="artist-sort" name="artist-sort"><option value="saved_tracks_desc">Most saved tracks</option><option value="name_asc">Name A–Z</option></select>
-              </label>
-              <div id="artists-list" class="entity-list" aria-live="polite" aria-label="Artists">
-                <p class="state-message">Loading artists…</p>
-              </div>
-              <div class="pagination" id="artists-pagination" aria-label="Artist pages">
-                <button type="button" id="artists-previous" class="button secondary" disabled>Previous</button>
-                <span id="artists-page-label">Page —</span>
-                <button type="button" id="artists-next" class="button secondary" disabled>Next</button>
-              </div>
-            </article>
-            <article class="panel detail-panel" id="artist-detail" aria-live="polite" aria-labelledby="artist-detail-heading">
-              <p class="eyebrow">ARTIST PROFILE</p>
-              <h3 id="artist-detail-heading">Choose an artist</h3>
-              <p class="state-message" id="artist-detail-empty">Select an artist to see their saved tracks and profile details.</p>
-              <div id="artist-detail-content" hidden>
-                <div class="artist-summary">
-                  <div class="artist-avatar" id="artist-detail-avatar" aria-hidden="true"><img class="artist-avatar-image" alt="" hidden><span class="artist-avatar-fallback">♫</span></div>
-                  <div><h4 id="artist-detail-name"></h4><p><span id="artist-detail-rank"></span><span id="artist-detail-saved-count"></span></p><a id="artist-detail-link" class="panel-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Open on Spotify <span aria-hidden="true">↗</span></a></div>
-                </div>
-                <p class="detail-metric"><span>Total saved-track duration</span><strong id="artist-detail-duration">—</strong></p>
-                <h4>Tracks</h4>
-                <div id="artist-track-list" class="entity-list"><p class="state-message">Select an artist to load tracks.</p></div>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section id="screen-tracks" class="screen" aria-labelledby="tracks-heading" hidden>
-          <div class="screen-heading">
-            <div><p class="eyebrow">EVERY SAVE, IN ONE PLACE</p><h2 id="tracks-heading">Tracks</h2></div>
-            <p class="screen-description">Search and sort the tracks in your library.</p>
-          </div>
-          <article class="panel table-panel">
-            <div class="panel-heading"><div><p class="eyebrow">TRACK LIBRARY</p><h3>Saved tracks</h3></div><span id="tracks-result-count" class="result-count">Loading…</span></div>
-            <div class="table-controls">
-              <label class="filter-field inline-search" for="track-search"><span>Search tracks</span><input id="track-search" type="search" placeholder="Track, artist, or album"></label>
-              <label class="filter-field sort-field" for="track-sort"><span>Sort tracks</span>
-                <select id="track-sort" name="track-sort">
-                  <option value="added_at_desc">Recently added</option><option value="added_at_asc">Oldest added</option><option value="name_asc">Track name A–Z</option><option value="duration_desc">Longest duration</option>
-                </select>
-              </label>
+        <section id="screen-tracks" class="screen" aria-labelledby="page-title" hidden>
+          <article class="panel">
+            <div class="panel-heading list-heading">
+              <div><h2>Saved tracks</h2><p id="tracks-result-count" class="result-count" role="status"></p></div>
+              {{ track_sort('track-sort', 'Sort tracks') }}
             </div>
             <div class="table-scroll">
-              <table>
+              <table class="track-table">
                 <caption class="sr-only">Saved tracks in your library</caption>
-                <thead><tr><th scope="col">#</th><th scope="col">Track</th><th scope="col">Album</th><th scope="col">Date added</th><th scope="col">Duration</th></tr></thead>
-                <tbody id="tracks-table-body"><tr><td colspan="5" class="table-state">Loading saved tracks…</td></tr></tbody>
+                <thead><tr><th scope="col">#</th><th scope="col">Track</th><th scope="col">Album</th><th scope="col">Date added</th><th scope="col">Duration</th><th scope="col"><span class="sr-only">Spotify</span></th></tr></thead>
+                <tbody id="tracks-table-body"></tbody>
               </table>
             </div>
-            <div class="pagination" id="tracks-pagination" aria-label="Track pages">
-              <button type="button" id="tracks-previous" class="button secondary" disabled>Previous</button>
-              <span id="tracks-page-label">Page —</span>
-              <button type="button" id="tracks-next" class="button secondary" disabled>Next</button>
+            {{ pages('tracks', 'Track library') }}
+          </article>
+        </section>
+
+        <section id="screen-timeline" class="screen screen-stack" aria-labelledby="page-title" hidden>
+          <dl class="panel library-facts timeline-stats" aria-label="Selected period summary">
+            <div><dt>Tracks saved</dt><dd id="timeline-total">—</dd></div>
+            <div><dt>Most active saving month</dt><dd id="timeline-peak">—</dd></div>
+            <div><dt>Average saved per month</dt><dd id="timeline-average">—</dd></div>
+          </dl>
+          <article class="panel">
+            <div class="panel-heading"><div><h2>Library growth</h2><p>Track additions, not plays or listening activity</p></div>{{ interval('timeline') }}</div>
+            <form id="timeline-range" class="range-controls" data-range-form>
+              {{ date_fields() }}
+              <button class="button" type="submit">Apply range</button>
+              <button class="panel-link" type="button" data-clear-range>Reset range</button>
+            </form>
+            <div id="timeline-chart" class="chart-container timeline-chart large" role="img" aria-label="Timeline of saved tracks"></div>
+            {{ period_data('timeline') }}
+          </article>
+        </section>
+
+        <section id="screen-discovery" class="screen screen-stack" aria-labelledby="page-title" hidden>
+          <div id="discovery-insights" class="discovery-grid" aria-live="polite"></div>
+          <article class="panel discovery-mix">
+            <div class="panel-heading">
+              <div><h2>Track distribution</h2><p id="distribution-description"></p></div>
+              <label class="field"><span class="sr-only">Distribution category</span><select id="distribution-dimension" name="dimension">
+                <option value="release_decade">Release decade</option><option value="duration">Track duration</option><option value="explicit">Explicit content</option>
+              </select></label>
+            </div>
+            <div id="track-mix-state"></div>
+            <div id="track-mix-content" class="donut-layout" hidden>
+              <figure class="donut-figure" aria-hidden="true">
+                <div id="track-distribution-chart" class="chart-container donut-chart"></div>
+                <figcaption class="donut-center"><strong id="track-mix-total" class="numeric"></strong><span>tracks</span></figcaption>
+              </figure>
+              <ul id="track-mix-legend" class="legend" aria-label="Track distribution"></ul>
             </div>
           </article>
         </section>
 
-        <section id="screen-timeline" class="screen" aria-labelledby="timeline-heading" hidden>
-          <div class="screen-heading">
-            <div><p class="eyebrow">WHEN YOUR LIBRARY GREW</p><h2 id="timeline-heading">Timeline</h2></div>
-            <p class="screen-description">Explore saved tracks by the date they were added.</p>
-          </div>
-          <article class="panel chart-panel timeline-panel">
-            <div class="panel-heading"><div><p class="eyebrow">SAVED TRACKS</p><h3>Library growth</h3></div></div>
-            <div class="timeline-controls">
-              <fieldset class="segmented-control">
-                <legend>Timeline interval</legend>
-                <label><input type="radio" name="timeline-interval" value="month" checked><span>Monthly</span></label>
-                <label><input type="radio" name="timeline-interval" value="year"><span>Yearly</span></label>
-              </fieldset>
-              <div class="range-controls">
-                <label class="filter-field" for="timeline-from"><span>Range start</span><input id="timeline-from" type="date"></label>
-                <label class="filter-field" for="timeline-to"><span>Range end</span><input id="timeline-to" type="date"></label>
-                <button class="button secondary" id="timeline-apply-range" type="button">Apply range</button>
-                <button class="text-button" id="timeline-clear-range" type="button">Reset range</button>
-              </div>
-            </div>
-            <div id="timeline-chart" class="chart-container large-chart" role="img" aria-label="Timeline of saved tracks">
-              <p class="state-message">Loading timeline…</p>
-            </div>
-          </article>
-        </section>
-
-        <section id="screen-discovery" class="screen" aria-labelledby="discovery-heading" hidden>
-          <div class="screen-heading">
-            <div><p class="eyebrow">A FEW THINGS TO NOTICE</p><h2 id="discovery-heading">Discovery</h2></div>
-            <p class="screen-description">Small, data-backed observations about your saved library.</p>
-          </div>
-          <div id="discovery-insights" class="insights-grid" aria-live="polite">
-            <article class="panel insight-card insight-loading"><span class="insight-icon" aria-hidden="true">✳</span><p class="state-message">Loading library insights…</p></article>
-          </div>
-          <p class="discovery-note">Insights describe saved tracks only; they don’t represent listening activity.</p>
-        </section>
-
-        <section id="screen-settings" class="screen" aria-labelledby="settings-heading" hidden>
-          <div class="screen-heading">
-            <div><p class="eyebrow">YOUR DATA, YOUR CHOICE</p><h2 id="settings-heading">Settings</h2></div>
-            <p class="screen-description">Connection and library synchronization status.</p>
-          </div>
+        <section id="screen-settings" class="screen screen-stack" aria-labelledby="page-title" hidden>
           <div class="settings-grid">
             <article class="panel settings-card">
-              <div class="panel-heading"><div><p class="eyebrow">ACCOUNT</p><h3>Spotify connection</h3></div><span id="connection-status-badge" class="status-badge status-checking">Checking</span></div>
-              <p id="connection-status-message" class="settings-copy" role="status" aria-live="polite">Checking connection status…</p>
-              <a id="spotify-connect" class="button primary" href="/auth/login">Connect Spotify</a>
-              <p class="settings-footnote">Connecting is optional. Your locally stored library remains available without an active Spotify connection.</p>
+              <span class="icon-tile">{{ icon('record') }}</span>
+              <div class="panel-heading"><h2>Spotify connection</h2><span id="connection-status-badge" class="status-badge">Checking</span></div>
+              <p id="connection-status-message" class="settings-note" role="status">Checking local library status…</p>
+              <a id="spotify-connect" class="button primary" href="/auth/login">Connect Spotify {{ icon('external') }}</a>
             </article>
             <article class="panel settings-card">
-              <div class="panel-heading"><div><p class="eyebrow">LIBRARY REFRESH</p><h3>Sync status</h3></div><span id="sync-status-badge" class="status-badge status-checking">Checking</span></div>
+              <span class="icon-tile">{{ icon('sync') }}</span>
+              <div class="panel-heading"><h2>Library sync</h2><span id="sync-status-badge" class="status-badge">Checking</span></div>
               <dl class="sync-details">
                 <div><dt>Last successful sync</dt><dd id="last-sync-time">Not available</dd></div>
                 <div><dt>Saved tracks</dt><dd id="sync-saved-tracks">—</dd></div>
@@ -311,23 +317,20 @@
                 <div><dt>Albums</dt><dd id="sync-albums">—</dd></div>
               </dl>
               <div class="sync-progress" id="sync-progress-region" hidden>
-                <div class="progress-heading">Sync progress</div>
-                <progress id="sync-progress" max="100" aria-label="Synchronization progress"></progress>
-                <p id="sync-progress-message" class="settings-copy" aria-live="polite">Synchronization in progress…</p>
+                <progress id="sync-progress" aria-label="Synchronization progress"></progress>
               </div>
               <button id="sync-button" class="button primary" type="button" disabled>Sync library</button>
-              <p id="sync-message" class="settings-footnote" role="status" aria-live="polite">Loading synchronization status…</p>
+              <p id="sync-message" class="settings-note" role="status">Checking synchronization status…</p>
             </article>
           </div>
           <article class="panel privacy-panel">
-            <span class="privacy-icon" aria-hidden="true">⌂</span>
-            <div><h3>Local by design</h3><p>Your library analytics are based on data stored by this app. No listening history or private credentials are shown here.</p></div>
+            <span class="icon-tile">{{ icon('lock') }}</span><div><h3>Stored on this device</h3><p>You can browse your saved library without an active Spotify connection. The dashboard does not show listening history.</p></div>
           </article>
         </section>
 
         <footer class="app-footer">
-          <span>SPOTIFY LIBRARY ANALYTICS <span aria-hidden="true">·</span> PRIVATE &amp; LOCAL</span>
-          <a href="/health">Service health <span aria-hidden="true">↗</span></a>
+          <span>Spotify Top · Private and local</span>
+          <div class="footer-links"><a href="/docs">API docs ↗</a><a href="/health">Service health ↗</a></div>
         </footer>
       </main>
     </div>
