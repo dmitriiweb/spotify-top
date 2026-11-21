@@ -8,10 +8,9 @@ Python 3.12 or newer and [uv](https://docs.astral.sh/uv/) are required. From the
 
 ```sh
 uv sync
-cp .env.example .env
 ```
 
-Edit `.env` only when connecting Spotify or changing local settings. Start the dashboard:
+Start the dashboard. You do not need a `.env` file or Spotify credentials for this step:
 
 ```sh
 uv run spotify-analytics
@@ -47,13 +46,15 @@ uv run spotify-analytics --load-demo
 
 ## Connect Spotify
 
-1. Sign in to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and create an app. Enable the Spotify Web API for the app.
-2. In the app's Redirect URIs settings, add exactly `http://127.0.0.1:8000/auth/callback`. Use `127.0.0.1`, not `localhost`; Spotify requires the configured redirect URI to match exactly.
-3. Copy the app's client ID and client secret into `SPOTIFY_ANALYTICS_SPOTIFY_CLIENT_ID` and `SPOTIFY_ANALYTICS_SPOTIFY_CLIENT_SECRET` in `.env`.
-4. Generate a unique session signing secret with a cryptographically secure generator, for example `openssl rand -hex 32`, and set it as `SPOTIFY_ANALYTICS_SESSION_SECRET` in `.env`. Keep `.env` private and never commit or share these values.
-5. Start the normal app with `uv run spotify-analytics`, choose **Connect Spotify**, approve access, then choose **Sync library** in Settings. Connecting alone does not import tracks.
+1. Sign in to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard). Select **Create app**, enter a name and description, and select **Web API**.
+2. In **Redirect URIs**, add `http://127.0.0.1:8000/auth/callback` and save the app. Use `127.0.0.1`, not `localhost`. If you change the port, use the same redirect URI in both Spotify and `.env`.
+3. Run `cp .env.example .env` if `.env` does not exist. In the app settings, find the client ID and client secret. Set `SPOTIFY_ANALYTICS_SPOTIFY_CLIENT_ID` and `SPOTIFY_ANALYTICS_SPOTIFY_CLIENT_SECRET` in `.env`.
+4. Run `openssl rand -hex 32` and set its output as `SPOTIFY_ANALYTICS_SESSION_SECRET` in `.env`. Keep `.env` private. Do not commit it.
+5. Start the app with `uv run spotify-analytics`. Open **Settings**, select **Connect Spotify**, and approve access. Back in **Settings**, select **Sync library**. Authorization alone does not import tracks.
 
-The owner of a development-mode app must have Spotify Premium. Add each account that will use the app to its user allowlist. Spotify can impose API access or quota restrictions; this app does not bypass them. This project has not been verified with a real Spotify account.
+If authorization stops on a callback error page, return to the dashboard and select **Connect Spotify** again. Do not refresh the callback page: authorization codes and login state are only for one login attempt.
+
+Spotify requires a Premium account for the owner of a development-mode app. To permit other Spotify accounts, add them under **Settings → Users Management** in the Spotify Developer Dashboard. Spotify can limit API access and quotas. This project has not been verified with a real Spotify account.
 See Spotify's official [Web API getting-started guide](https://developer.spotify.com/documentation/web-api/tutorials/getting-started), [redirect URI rules](https://developer.spotify.com/documentation/web-api/concepts/redirect_uri), and [quota modes](https://developer.spotify.com/documentation/web-api/concepts/quota-modes) for current platform requirements.
 
 The app requests access to saved tracks and stores the synchronized library in SQLite. Each sync fetches a complete snapshot and publishes it atomically; a failed sync keeps the previous queryable library. OAuth tokens are held only in process memory: restarting the server requires connecting again before another sync. The local library and its successful-sync timestamp persist in the database and remain available offline without an active Spotify connection. Sync requires Spotify network access; there is no listening-history or streaming-activity data.
@@ -70,6 +71,8 @@ The dashboard provides:
 - **Settings:** Spotify connection and sync status, last successful sync, counts, and the action to synchronize the library.
 
 The shared filters are inclusive saved-date bounds, text search, explicit/clean content, album ID, and artist scope where applicable. Search is a case-insensitive substring search over track, album, and credited artist names. Filters intersect; date bounds apply to when a track was saved, not its album release date. Artist and track views also have search and sort controls. Filters apply across dashboard data, and active filters can be removed one at a time or cleared.
+
+Select a top-artist bar to open that artist. Select a timeline bar to filter tracks to that period, or a slice of the explicit-content chart to filter tracks by content. Release-decade and duration slices open Tracks without applying a filter because the API does not accept those filters. An artist with one saved track appears in the directory. A track with multiple artists counts once for each credited artist and once in the overall track total.
 
 Use the dashboard download controls to export filtered artists or tracks as CSV, or the full filtered report as JSON. The API routes are `GET /api/export/artists.csv`, `GET /api/export/tracks.csv`, and `GET /api/export/library.json`. These accept the common filter query parameters (`added_from`, `added_to`, `artist_id`, `album_id`, `q`, `explicit`), return all matching results without pagination, and reject unknown query parameters. Downloads are UTF-8 attachments named `artists.csv`, `tracks.csv`, and `library.json`. JSON includes filtered overview, artists, tracks, monthly and yearly timelines, distributions, and insights. CSV text is protected against spreadsheet formulas; JSON keeps the original text.
 
@@ -95,7 +98,7 @@ Without Spotify credentials and a secure session secret, Spotify login and sync 
 
 ## Manual smoke procedure
 
-This is a procedure, not a claim that a manual smoke test has been run:
+The automated tests use local SQLite fixtures and mock Spotify HTTP responses. They do not require credentials or a network connection. To check the browser locally:
 
 1. Run `uv sync`, then `uv run spotify-analytics --demo`.
 2. Confirm the browser opens only after the server is ready, the dashboard loads populated demo views, and Settings identifies the local demo sync state.
