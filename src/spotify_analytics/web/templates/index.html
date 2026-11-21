@@ -10,7 +10,7 @@
     <script src="{{ url_for('static', path='/app.js') }}" defer></script>
   </head>
   <body>
-    <a class="skip-link" href="#screen-overview">Skip to dashboard</a>
+    <a class="skip-link" href="#dashboard">Skip to dashboard</a>
     <div class="app-shell">
       <aside class="sidebar" aria-label="Dashboard navigation">
         <a class="brand" href="/" aria-label="Spotify Library Analytics overview">
@@ -45,7 +45,7 @@
         </button>
       </aside>
 
-      <main class="main-content">
+      <main id="dashboard" class="main-content" tabindex="-1">
         <header class="topbar">
           <div>
             <p class="eyebrow">YOUR MUSIC, IN CONTEXT</p>
@@ -147,14 +147,12 @@
               <div class="panel-heading"><div><p class="eyebrow">JUST ADDED</p><h3>Recent additions</h3></div><button class="panel-link" type="button" data-screen="tracks">View tracks <span aria-hidden="true">→</span></button></div>
               <div id="recent-additions" class="entity-list" aria-live="polite" aria-label="Recently saved tracks">
                 <p class="state-message">Loading recent additions…</p>
-                <p class="state-message" hidden>No recent additions to show.</p>
               </div>
             </article>
             <article class="panel list-panel">
               <div class="panel-heading"><div><p class="eyebrow">YOUR LIBRARY SNAPSHOT</p><h3>Quick insights</h3></div></div>
               <div id="quick-insights" class="entity-list" aria-live="polite" aria-label="Quick library insights">
                 <p class="state-message">Loading your insights…</p>
-                <p class="state-message" hidden>No insights are available yet.</p>
               </div>
             </article>
           </div>
@@ -278,7 +276,6 @@
             <div id="timeline-chart" class="chart-container large-chart" role="img" aria-label="Timeline of saved tracks">
               <p class="state-message">Loading timeline…</p>
             </div>
-            <div id="timeline-empty" class="empty-state" hidden><strong>No saved tracks in this range</strong><span>Try another date range or clear your filters.</span></div>
           </article>
         </section>
 
@@ -314,7 +311,7 @@
                 <div><dt>Albums</dt><dd id="sync-albums">—</dd></div>
               </dl>
               <div class="sync-progress" id="sync-progress-region" hidden>
-                <div class="progress-heading"><span>Sync progress</span><span id="sync-progress-label">Preparing…</span></div>
+                <div class="progress-heading">Sync progress</div>
                 <progress id="sync-progress" max="100" aria-label="Synchronization progress"></progress>
                 <p id="sync-progress-message" class="settings-copy" aria-live="polite">Synchronization in progress…</p>
               </div>

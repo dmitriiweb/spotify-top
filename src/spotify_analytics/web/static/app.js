@@ -10,7 +10,7 @@
     q: document.querySelector("#search-query"),
   };
   const chipRoot = document.querySelector("#active-filters");
-  const state = { screen: "overview", artistId: null, artistName: "", offsets: { artists: 0, tracks: 0 }, sorts: { artists: "saved_tracks_desc", tracks: "added_at_desc", artistTracks: "added_at_desc" }, interval: "month", dimension: "release_decade", dimensionRequest: 0, loading: false, request: 0, syncPoll: null };
+  const state = { screen: "overview", artistId: null, artistName: "", offsets: { artists: 0, tracks: 0, artistTracks: 0 }, sorts: { artists: "saved_tracks_desc", tracks: "added_at_desc", artistTracks: "added_at_desc" }, interval: "month", dimension: "release_decade", dimensionRequest: 0, request: 0, syncPoll: null, localLibrary: null };
   const $ = (selector, root = document) => root.querySelector(selector);
   const make = (tag, className, text) => {
     const node = document.createElement(tag);
@@ -115,8 +115,6 @@
     if (!screens[screen]) return;
     state.screen = screen;
     renderNav();
-    const title = document.querySelector("#page-title");
-    if (title) title.textContent = ({ overview: "Overview", artists: "Artists", tracks: "Tracks", timeline: "Timeline", discovery: "Discovery", settings: "Settings" })[screen] || "Library";
     history.replaceState(null, "", `#screen-${screen}`);
     loadScreen();
   }
@@ -143,7 +141,7 @@
       remove.type = "button";
       remove.setAttribute("aria-label", `Remove ${label.toLowerCase()} filter`);
       remove.addEventListener("click", () => {
-        if (key === "artist_id") { state.artistId = null; state.artistName = ""; }
+        if (key === "artist_id") clearArtist();
         else if (key === "explicit" && explicit) explicit.value = "";
         else if (key === "album_id" && album) album.value = "";
         else if (filters[key]) {
@@ -156,7 +154,7 @@
             if (filters.q?._debounce) clearTimeout(filters.q._debounce);
           }
         }
-        renderChips(); loadScreen();
+        applyFilters();
       });
       chip.append(remove); chipRoot.append(chip);
     });
@@ -175,6 +173,22 @@
     });
   }
 
+  function clearArtist() {
+    state.artistId = null;
+    state.artistName = "";
+    state.offsets.tracks = 0;
+    state.offsets.artistTracks = 0;
+  }
+  function resetPages() {
+    state.offsets.artists = 0;
+    state.offsets.tracks = 0;
+    state.offsets.artistTracks = 0;
+  }
+  function applyFilters() {
+    resetPages();
+    loadScreen();
+  }
+
   function clearFilters() {
     Object.values(filters).forEach((input) => { if (input) input.value = ""; });
     if (filters.q?._debounce) clearTimeout(filters.q._debounce);
@@ -186,9 +200,8 @@
     if (trackSearch) trackSearch.value = "";
     const artistSearch = document.querySelector("#artist-search");
     if (artistSearch) artistSearch.value = "";
-    state.artistId = null; state.artistName = "";
-    state.offsets.artists = 0; state.offsets.tracks = 0;
-    renderChips(); loadScreen();
+    clearArtist();
+    applyFilters();
   }
   function number(value) { return Number(value || 0).toLocaleString(); }
   async function renderOverview(requestId) {
@@ -290,9 +303,12 @@
       const rows = data.items || [];
       if (!rows.length) { clearChart(node, "No artists match these filters."); return; }
       const positions = rows.map((_, index) => index);
-      plot("top-artists-chart", [{ type: "bar", orientation: "h", x: rows.map((row) => row.saved_tracks), y: positions, customdata: rows.map((row) => [row.artist.id, row.artist.name]), marker: { color: "#8b5cf6" }, hovertemplate: "%{customdata[1]}: %{x} saved tracks<extra></extra>" }], { yaxis: { autorange: "reversed", tickmode: "array", tickvals: positions, ticktext: rows.map((row) => row.artist.name) }, xaxis: { title: "Saved tracks", rangemode: "tozero" }, showlegend: false });
+      plot("top-artists-chart", [{ type: "bar", orientation: "h", x: rows.map((row) => row.saved_tracks), y: positions, customdata: rows.map((row) => [row.artist.id, row.artist.name]), marker: { color: "#8b5cf6" }, hovertemplate: "%{customdata[1]}: %{x} saved tracks<extra></extra>" }], { yaxis: { automargin: true, autorange: "reversed", tickmode: "array", tickvals: positions, ticktext: rows.map((row) => row.artist.name) }, xaxis: { title: "Saved tracks", rangemode: "tozero" }, showlegend: false });
       node.removeAllListeners?.("plotly_click");
-      node.on?.("plotly_click", (event) => { const id = event?.points?.[0]?.customdata?.[0]; if (id) openArtist(id); });
+      node.on?.("plotly_click", (event) => {
+        const [id, name] = event?.points?.[0]?.customdata || [];
+        if (id) openArtist(id, name);
+      });
     } catch (error) { if (requestId === state.request) clearChart(node, `Artists chart unavailable: ${error.message}`); }
   }
   async function renderDistributionChart(requestId = state.request) {
@@ -314,7 +330,7 @@
         if (dimension === "explicit" && key) {
           const control = document.querySelector('[name="explicit"]');
           if (control) control.value = key === "explicit" ? "true" : "false";
-          renderChips();
+          resetPages();
         }
         state.offsets.tracks = 0;
         navigate("tracks");
@@ -323,6 +339,7 @@
   }
   async function renderArtists(requestId) {
     if (!state.artistId) {
+      document.querySelector("#artist-detail-heading").textContent = "Choose an artist";
       const detail = document.querySelector("#artist-detail-content");
       const emptyMessage = document.querySelector("#artist-detail-empty");
       if (detail) detail.hidden = true;
@@ -375,8 +392,12 @@
         if (detailEmpty) detailEmpty.hidden = true;
         const initialList = document.querySelector("#artist-track-list");
         if (initialList) loading(initialList, "Loading this artist’s saved tracks…");
-        const response = await getJSON(endpoint(`/api/artists/${encodeURIComponent(artistId)}`, { limit, offset: state.offsets.tracks, sort: state.sorts.artistTracks }));
+        const response = await getJSON(endpoint(`/api/artists/${encodeURIComponent(artistId)}`, { limit, offset: state.offsets.artistTracks, sort: state.sorts.artistTracks }, { includeArtist: false }));
         if (requestId !== state.request) return;
+        if (state.artistName !== response.artist.name) {
+          state.artistName = response.artist.name;
+          renderChips();
+        }
         const heading = document.querySelector("#artist-detail-heading");
         const avatar = document.querySelector("#artist-detail-avatar");
         if (avatar) {
@@ -411,9 +432,6 @@
         if (count) count.textContent = `${number(response.saved_tracks)} saved tracks`;
         const totalDuration = document.querySelector("#artist-detail-duration");
         if (totalDuration) totalDuration.textContent = duration(response.total_duration_ms);
-        if (detail) detail.hidden = false;
-        const emptyMessage = document.querySelector("#artist-detail-empty");
-        if (emptyMessage) emptyMessage.hidden = true;
         let trackSort = document.querySelector("#artist-track-sort");
         if (!trackSort && detail) {
           const label = make("label", "filter-field sort-field", "Sort artist tracks");
@@ -425,7 +443,7 @@
           label.append(trackSort);
           const tracksHeading = Array.from(detail.querySelectorAll("h4")).find((heading) => heading.textContent === "Tracks");
           detail.insertBefore(label, tracksHeading || detail.firstChild);
-          trackSort.addEventListener("change", () => { state.sorts.artistTracks = trackSort.value; state.offsets.tracks = 0; loadScreen(); });
+          trackSort.addEventListener("change", () => { state.sorts.artistTracks = trackSort.value; state.offsets.artistTracks = 0; loadScreen(); });
         }
         if (trackSort) trackSort.value = state.sorts.artistTracks;
         data = response.tracks;
@@ -446,11 +464,11 @@
               const pages = make("div", "pagination");
               const previous = make("button", "button secondary", "Previous");
               previous.type = "button"; previous.disabled = data.offset <= 0;
-              previous.addEventListener("click", () => { state.offsets.tracks = Math.max(0, data.offset - data.limit); loadScreen(); });
+              previous.addEventListener("click", () => { state.offsets.artistTracks = Math.max(0, data.offset - data.limit); loadScreen(); });
               const label = make("span", "", `Page ${Math.floor(data.offset / data.limit) + 1} of ${Math.ceil(data.total / data.limit)}`);
               const next = make("button", "button secondary", "Next");
               next.type = "button"; next.disabled = data.offset + data.limit >= data.total;
-              next.addEventListener("click", () => { state.offsets.tracks = data.offset + data.limit; loadScreen(); });
+              next.addEventListener("click", () => { state.offsets.artistTracks = data.offset + data.limit; loadScreen(); });
               pages.append(previous, label, next); root.append(pages);
             }
           }
@@ -478,15 +496,15 @@
             body.append(row);
           });
         }
+        const previous = document.getElementById("tracks-previous");
+        const next = document.getElementById("tracks-next");
+        const pageLabel = document.getElementById("tracks-page-label");
+        if (pageLabel) pageLabel.textContent = data.total ? `Page ${Math.floor(data.offset / data.limit) + 1} of ${Math.max(1, Math.ceil(data.total / data.limit))}` : "Page 0";
+        if (previous) previous.disabled = data.offset <= 0;
+        if (next) next.disabled = data.offset + data.limit >= data.total;
       }
-      const prefix = artistId ? "artist-track" : "tracks";
-      const previous = document.getElementById(`${prefix}-previous`);
-      const next = document.getElementById(`${prefix}-next`);
-      const pageLabel = document.getElementById(`${prefix}-page-label`);
-      if (pageLabel) pageLabel.textContent = data.total ? `Page ${Math.floor(data.offset / data.limit) + 1} of ${Math.max(1, Math.ceil(data.total / data.limit))}` : "Page 0";
-      if (previous) previous.disabled = data.offset <= 0;
-      if (next) next.disabled = data.offset + data.limit >= data.total;
     } catch (error) {
+      if (requestId !== state.request) return;
       if (artistId) {
         const detail = document.querySelector("#artist-detail-content");
         if (detail) detail.hidden = false;
@@ -519,7 +537,8 @@
         if (!dates) return;
         if (filters.added_from) filters.added_from.value = filters.added_from.value && filters.added_from.value > dates[0] ? filters.added_from.value : dates[0];
         if (filters.added_to) filters.added_to.value = filters.added_to.value && filters.added_to.value < dates[1] ? filters.added_to.value : dates[1];
-        state.offsets.tracks = 0; renderChips(); navigate("tracks");
+        resetPages();
+        navigate("tracks");
       });
     } catch (error) { if (requestId === state.request) clearChart(node, `Timeline unavailable: ${error.message}`); }
   }
@@ -559,6 +578,15 @@
     const button = document.querySelector("#sync-button");
     try {
       const status = await getJSON("/api/sync/status");
+      const previousLibrary = state.localLibrary;
+      if (status.status !== "running") {
+        state.localLibrary = { accountId: status.account_id, syncedAt: status.last_successful_sync };
+      }
+      if (status.status === "succeeded" && previousLibrary && previousLibrary.syncedAt !== status.last_successful_sync) {
+        if (previousLibrary.accountId !== status.account_id) clearArtist();
+        resetPages();
+        if (state.screen !== "settings") loadScreen();
+      }
       const labels = { idle: "Not synced", running: "Syncing", succeeded: "Synced", failed: "Sync failed" };
       if (badge) { badge.textContent = labels[status.status] || status.status; badge.className = `status-badge status-${status.status}`; }
       const last = document.querySelector("#last-sync-time");
@@ -617,8 +645,11 @@
     });
   }
   function openArtist(id, name = "") {
-    state.artistId = id; state.artistName = name; state.offsets.tracks = 0;
-    navigate("artists"); renderChips();
+    state.artistId = id;
+    state.artistName = name;
+    state.offsets.tracks = 0;
+    state.offsets.artistTracks = 0;
+    navigate("artists");
   }
   function loadScreen() {
     const requestId = ++state.request;
@@ -642,11 +673,11 @@
     if (!screens.overview) return false;
     document.querySelectorAll("[data-screen]").forEach((link) => link.addEventListener("click", (event) => {
       event.preventDefault();
-      if (link.dataset.screen === "artists" && state.artistId) { state.artistId = null; state.artistName = ""; }
+      if (link.dataset.screen === "artists" && state.artistId) clearArtist();
       navigate(link.dataset.screen);
     }));
-    if (filtersForm) filtersForm.addEventListener("submit", (event) => { event.preventDefault(); state.offsets.artists = 0; state.offsets.tracks = 0; renderChips(); loadScreen(); });
-    Object.values(filters).forEach((input) => input?.addEventListener("change", () => { state.offsets.artists = 0; state.offsets.tracks = 0; renderChips(); loadScreen(); }));
+    filtersForm?.addEventListener("submit", (event) => { event.preventDefault(); applyFilters(); });
+    Object.values(filters).forEach((input) => input?.addEventListener("change", applyFilters));
     document.querySelector("#track-search")?.addEventListener("input", (event) => {
       if (filters.q) {
         filters.q.value = event.target.value;
@@ -659,16 +690,14 @@
       if (trackSearch && trackSearch.value !== filters.q.value) trackSearch.value = filters.q.value;
       if (artistSearch && artistSearch.value !== filters.q.value) artistSearch.value = filters.q.value;
       clearTimeout(filters.q._debounce);
-      filters.q._debounce = setTimeout(() => { state.offsets.artists = 0; state.offsets.tracks = 0; renderChips(); loadScreen(); }, 250);
+      filters.q._debounce = setTimeout(applyFilters, 250);
     });
     document.querySelector("#clear-filters")?.addEventListener("click", clearFilters);
     document.querySelector("#artist-sort")?.addEventListener("change", (event) => { state.sorts.artists = event.target.value; state.offsets.artists = 0; loadScreen(); });
     document.querySelector("#track-sort")?.addEventListener("change", (event) => { state.sorts.tracks = event.target.value; state.offsets.tracks = 0; loadScreen(); });
     document.querySelector("#artist-search")?.addEventListener("input", (event) => {
       if (!filters.q) return;
-      state.artistId = null;
-      state.artistName = "";
-      state.offsets.artists = 0;
+      clearArtist();
       filters.q.value = event.target.value;
       filters.q.dispatchEvent(new Event("input", { bubbles: true }));
     });
@@ -682,18 +711,18 @@
     document.querySelector("#timeline-apply-range")?.addEventListener("click", () => {
       if (filters.added_from) filters.added_from.value = document.querySelector("#timeline-from")?.value || "";
       if (filters.added_to) filters.added_to.value = document.querySelector("#timeline-to")?.value || "";
-      state.offsets.tracks = 0; renderChips(); loadScreen();
+      applyFilters();
     });
     document.querySelector("#timeline-clear-range")?.addEventListener("click", () => {
       if (filters.added_from) filters.added_from.value = "";
       if (filters.added_to) filters.added_to.value = "";
-      renderChips(); loadScreen();
+      applyFilters();
     });
     document.querySelectorAll('[name="dimension"]').forEach((select) => select.addEventListener("change", () => { state.dimension = select.value; renderDistributionChart(); }));
     bindSync();
     const hashScreen = location.hash.startsWith("#screen-") ? location.hash.slice(8) : location.hash.slice(1);
     if (screens[hashScreen]) state.screen = hashScreen;
-    renderNav(); renderChips(); loadScreen(); renderSyncStatus();
+    renderNav(); loadScreen(); renderSyncStatus();
     return true;
   }
   initDashboard();
