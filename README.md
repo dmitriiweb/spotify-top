@@ -64,7 +64,7 @@ The app requests access to saved tracks and stores the synchronized library in S
 The dashboard provides:
 
 - **Overview:** saved-track, artist, and album counts; total duration and save dates; the top ten artists; artist distribution by saved-track count; the saved-track timeline; and recent additions with artwork and Spotify links where available.
-- **Artists:** a directory with 50 artists per page, ranking and name sort, and profiles with saved tracks, dates, total duration, and Spotify links where available.
+- **Artists:** a directory with 50 artists per page, ranking and name sort, and profiles with saved tracks, dates, total duration, and Spotify links where available. Enter a page number or use its arrows, then select **Go**.
 - **Tracks:** a paginated library with album artwork, artist credits, duration, and sorting by save date, title, or duration.
 - **Timeline:** monthly or yearly saved-track counts, a selectable date range, and a summary of the busiest month and average additions per month.
 - **Discovery:** insights about the top saved artist, busiest saving month, and library duration, plus charts by release decade, duration, or explicit content.
@@ -79,6 +79,47 @@ Use the dashboard download controls to export filtered artists or tracks as CSV,
 Analytics run locally against persisted library data; no Spotify connection is required to browse existing data or use demo mode. The charts use a bundled Plotly asset and do not require a chart CDN. Empty libraries show empty states. Saved-track counts, dates, and analytics do not measure plays or listening frequency.
 
 Artist images and album covers can be unavailable offline. The demo uses sample image URLs that do not resolve. The dashboard shows local fallback artwork. These image requests can appear as network errors in browser tools, but do not stop charts or local analytics.
+
+### Screenshots
+
+Firefox screenshots from a library snapshot with substitute artist names, sample track and album titles, and no personal artwork.
+
+![Overview with saved-library totals, top artists, artist distribution, and a timeline](docs/screenshots/overview.webp)
+
+<details>
+<summary>Artists</summary>
+
+![Artist directory with page navigation and the Linkin Park profile selected](docs/screenshots/artists.webp)
+
+</details>
+
+<details>
+<summary>Tracks</summary>
+
+![Saved tracks with artist credits, albums, save dates, and durations](docs/screenshots/tracks.webp)
+
+</details>
+
+<details>
+<summary>Timeline</summary>
+
+![Monthly saved-track timeline with date controls and summary statistics](docs/screenshots/timeline.webp)
+
+</details>
+
+<details>
+<summary>Discovery</summary>
+
+![Library insights and a chart of saved tracks by release decade](docs/screenshots/discovery.webp)
+
+</details>
+
+<details>
+<summary>Settings</summary>
+
+![Spotify connection and local library sync status](docs/screenshots/settings.webp)
+
+</details>
 
 ## Settings
 
