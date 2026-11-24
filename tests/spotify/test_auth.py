@@ -12,7 +12,7 @@ from spotify_analytics.spotify.auth import (
 from spotify_analytics.spotify.client import TokenSet
 
 
-def test_authorization_url_uses_s256_and_only_library_scope():
+def test_authorization_url_uses_s256_and_read_only_scopes():
     settings = Settings(
         spotify_client_id="client-id", redirect_uri="https://app.test/callback"
     )
@@ -36,7 +36,7 @@ def test_authorization_url_uses_s256_and_only_library_scope():
         "state": ["csrf-state"],
         "code_challenge_method": ["S256"],
         "code_challenge": [expected_challenge],
-        "scope": ["user-library-read"],
+        "scope": ["user-library-read user-follow-read"],
     }
 
 

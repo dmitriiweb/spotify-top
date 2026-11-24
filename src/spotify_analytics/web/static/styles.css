@@ -293,7 +293,15 @@ button.legend-key:hover { background: var(--elevated); }
 .artist-select[aria-pressed="true"] { border-color: var(--pink-border); background: var(--pink-panel); }
 .artist-select[aria-pressed="true"] .artist-name { color: var(--pink-hover); }
 .artist-select .artwork { width: 32px; height: 32px; }
-.artist-name { font-size: 15px; font-weight: 650; }
+.artist-label { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: start; gap: 2px; min-width: 0; }
+.artist-label .truncate { max-width: 100%; }
+.artist-follow-status {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: var(--muted); font-size: 11px; font-weight: 400; line-height: 1.25;
+}
+.artist-follow-status .icon { width: 12px; height: 12px; }
+.artist-follow-status.is-following .icon { color: var(--pink); }
+.artist-name { font-size: 15px; font-weight: 650; line-height: 1.25; }
 .artist-rank, .artist-count { color: var(--secondary); font-size: 13px; white-space: nowrap; }
 .result-count { color: var(--secondary); font-size: 13px; }
 .list-heading { align-items: center; }

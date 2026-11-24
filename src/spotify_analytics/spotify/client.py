@@ -18,6 +18,7 @@ from spotify_analytics.core.config import Settings
 _API_BASE = "https://api.spotify.com/v1"
 _TOKEN_URL = "https://accounts.spotify.com/api/token"
 _PAGE_SIZE = 50
+_LIBRARY_CONTAINS_LIMIT = 40
 _MAX_RETRIES = 3
 _RETRY_BASE_SECONDS = 0.25
 _MAX_RETRY_WAIT_SECONDS = 30.0
@@ -87,12 +88,32 @@ class SpotifyClient:
     async def current_account(self) -> str:
         """Return the current account's immutable ID, falling back to its ID."""
         payload = await self._api_get(f"{_API_BASE}/me")
+        if not isinstance(payload, dict):
+            raise SpotifyError("Spotify returned an invalid account profile")
         account_id = payload.get("account_id")
         if not isinstance(account_id, str) or not account_id:
             account_id = payload.get("id")
         if not isinstance(account_id, str) or not account_id:
             raise SpotifyError("Spotify returned an invalid account profile")
         return account_id
+
+    async def artist_follow_status(self, artist_ids: list[str]) -> dict[str, bool]:
+        """Return the current account's follow status for each artist ID."""
+        status: dict[str, bool] = {}
+        for start in range(0, len(artist_ids), _LIBRARY_CONTAINS_LIMIT):
+            batch = artist_ids[start : start + _LIBRARY_CONTAINS_LIMIT]
+            payload = await self._api_get(
+                f"{_API_BASE}/me/library/contains",
+                params={"uris": ",".join(f"spotify:artist:{id_}" for id_ in batch)},
+            )
+            if (
+                not isinstance(payload, list)
+                or len(payload) != len(batch)
+                or any(type(value) is not bool for value in payload)
+            ):
+                raise SpotifyError("Spotify returned invalid artist follow status")
+            status.update(zip(batch, payload, strict=True))
+        return status
 
     async def iter_saved_tracks(self) -> AsyncIterator[list[dict]]:
         """Yield complete, validated saved-track pages in Spotify order."""
@@ -227,7 +248,9 @@ class SpotifyClient:
             tokens._generation += 1
             return tokens
 
-    async def _api_get(self, url: str, params: Mapping[str, int] | None = None) -> dict:
+    async def _api_get(
+        self, url: str, params: Mapping[str, int | str] | None = None
+    ) -> object:
         if self.tokens is None:
             raise SpotifyError("Spotify authentication is unavailable")
         refreshed_after_401 = False
@@ -279,12 +302,9 @@ class SpotifyClient:
             if not 200 <= response.status_code < 300:
                 raise SpotifyError("Spotify request failed")
             try:
-                payload = response.json()
+                return response.json()
             except ValueError:
                 raise SpotifyError("Spotify returned an invalid response") from None
-            if not isinstance(payload, dict):
-                raise SpotifyError("Spotify returned an invalid response")
-            return payload
 
     async def _wait_before_retry(
         self,

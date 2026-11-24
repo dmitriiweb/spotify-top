@@ -22,7 +22,7 @@ _MAX_SESSIONS = 10_000
 
 
 def authorization_url(settings: Settings, state: str, verifier: str) -> str:
-    """Build Spotify's PKCE authorization URL with the sole required scope."""
+    """Build the PKCE authorization URL for saved tracks and artist follows."""
     digest = hashlib.sha256(verifier.encode("ascii")).digest()
     challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
     query = urlencode(
@@ -33,7 +33,7 @@ def authorization_url(settings: Settings, state: str, verifier: str) -> str:
             "state": state,
             "code_challenge_method": "S256",
             "code_challenge": challenge,
-            "scope": "user-library-read",
+            "scope": "user-library-read user-follow-read",
         }
     )
     return f"{_AUTHORIZATION_URL}?{query}"

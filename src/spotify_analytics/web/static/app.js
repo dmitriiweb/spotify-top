@@ -137,6 +137,32 @@
     return getJSON(endpoint(path, params, artistId), { signal });
   }
 
+  function followStatusLabel() {
+    const label = make("span", "artist-follow-status");
+    label.hidden = true;
+    return label;
+  }
+
+  async function showArtistFollowStatus(targets, signal, current = () => !signal.aborted) {
+    // Local demo artists do not have Spotify IDs.
+    const artists = targets.filter(([id]) => /^[A-Za-z0-9]{1,22}$/.test(id));
+    if (!artists.length) return;
+    const query = new URLSearchParams({ ids: artists.map(([id]) => id).join(",") });
+    try {
+      const status = await getJSON(`/api/artist-follow-status?${query}`, { signal });
+      if (!current()) return;
+      for (const [id, label] of artists) {
+        const following = status[id];
+        if (typeof following !== "boolean") continue;
+        label.replaceChildren(icon(following ? "check" : "dot"), following ? "Following" : "Not following");
+        label.classList.toggle("is-following", following);
+        label.hidden = false;
+      }
+    } catch {
+      // Follow status is optional. Keep the local artist data visible.
+    }
+  }
+
   function dataState(kind, message) {
     const node = make("div", `data-state ${kind}-state`);
     if (kind === "loading") {
@@ -326,7 +352,7 @@
     root.replaceChildren(list);
   }
 
-  function rankedArtists(root, rows) {
+  function rankedArtists(root, rows, signal) {
     if (!rows.length) {
       displayState(root, "empty", "No artists match these filters.");
       return;
@@ -339,6 +365,7 @@
     for (let i = 0; i <= 4; i++) ticks.append(make("span", "", number(i * step)));
     axis.append(make("span", "", "Artist"), ticks, make("span", "", "Tracks"));
     const list = make("ol", "rank-list");
+    const followTargets = [];
     for (const { artist, saved_tracks: count } of rows) {
       const item = make("li");
       const bar = button("", () => openArtist(artist), "rank-bar");
@@ -348,11 +375,16 @@
       const fill = make("span", "rank-fill");
       fill.style.width = `${count / scale * 100}%`;
       track.append(fill);
-      bar.append(make("span", "rank-label", artist.name), track, make("span", "rank-count numeric", number(count)), make("span", "sr-only", "saved tracks"));
+      const label = make("span", "artist-label rank-label");
+      const follow = followStatusLabel();
+      label.append(make("span", "", artist.name), follow);
+      followTargets.push([artist.id, follow]);
+      bar.append(label, track, make("span", "rank-count numeric", number(count)), make("span", "sr-only", "saved tracks"));
       item.append(bar);
       list.append(item);
     }
     root.replaceChildren(axis, list);
+    showArtistFollowStatus(followTargets, signal);
   }
 
   async function plot(node, traces, layout, onClick) {
@@ -440,7 +472,7 @@
       for (let offset = 0; ; offset += limit) {
         const page = await read("/api/artists", { limit, offset }, signal);
         if (signal.aborted) return;
-        if (!offset) rankedArtists(top, page.items.slice(0, 10));
+        if (!offset) rankedArtists(top, page.items.slice(0, 10), signal);
         for (const row of page.items) counts[limits.findIndex((maximum) => row.saved_tracks <= maximum)]++;
         if (offset + limit >= page.total || !page.items.length) break;
       }
@@ -534,16 +566,22 @@
         return;
       }
       const list = make("ol", "entity-rows");
+      const followTargets = [];
       for (const { artist, rank, saved_tracks: tracks } of page.items) {
         const item = make("li");
         const row = button("", () => openArtist(artist), "artist-select");
         row.dataset.artist = artist.id;
         row.setAttribute("aria-pressed", String(artist.id === state.artist?.id));
-        row.append(make("span", "artist-rank numeric", `#${number(rank)}`), artwork(artist.name, artist.image_url, true), truncate(artist.name, "artist-name"), make("span", "artist-count numeric", trackCount(tracks)));
+        const label = make("span", "artist-label");
+        const follow = followStatusLabel();
+        label.append(truncate(artist.name, "artist-name"), follow);
+        followTargets.push([artist.id, follow]);
+        row.append(make("span", "artist-rank numeric", `#${number(rank)}`), artwork(artist.name, artist.image_url, true), label, make("span", "artist-count numeric", trackCount(tracks)));
         item.append(row);
         list.append(item);
       }
       root.replaceChildren(list);
+      showArtistFollowStatus(followTargets, signal);
     } catch (error) {
       if (signal.aborted) return;
       count.textContent = "";
@@ -579,6 +617,9 @@
       }
       const name = $("#artist-detail-name");
       name.textContent = data.artist.name;
+      const follow = $("#artist-detail-follow-status");
+      follow.hidden = true;
+      showArtistFollowStatus([[artist.id, follow]], signal, current);
       $("#artist-detail-avatar").replaceChildren(artwork(data.artist.name, data.artist.image_url, true));
       $("#artist-detail-count").textContent = `${trackCount(data.saved_tracks)} saved${data.rank ? ` · Rank #${number(data.rank)}` : ""}`;
       $("#artist-detail-duration").textContent = duration(data.total_duration_ms, true);

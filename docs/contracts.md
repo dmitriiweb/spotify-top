@@ -133,10 +133,13 @@ These contracts are future behavior only; Phase 0 does not include these routes.
 | Method and path | Status and behavior |
 |---|---|
 | `POST /api/sync` | No body. 202 returns `SyncStatusResponse` in `running` state. 401 `auth_required` when unauthenticated. 409 `sync_in_progress` when already running. Unexpected JSON body is 422. Example accepted response: `{"account_id":"account-1","status":"running","last_successful_sync":null,"error":null,"saved_tracks":0,"artists":0,"albums":0,"processed_tracks":0}`. |
-| `GET /auth/login` | No parameters. 302 to Spotify authorization URL with state, PKCE and `user-library-read` scope. 503 `spotify_not_configured` if credentials are absent. |
+| `GET /auth/login` | No parameters. 302 to Spotify authorization URL with state, PKCE, and the `user-library-read` and `user-follow-read` scopes. 503 `spotify_not_configured` if credentials are absent. |
 | `GET /auth/callback` | Successful callback requires `code` and `state`, then 302 to `/`. Denial uses `error` and `state`, returning 400 `oauth_denied`. Invalid state is 400 `invalid_oauth_state`; token exchange failure is 502 `spotify_unavailable`. |
+| `GET /api/artist-follow-status` | `ids` requires 1 to 50 comma-separated Spotify artist IDs. Returns a JSON object keyed by artist ID with boolean values for the current Spotify session, or `{}` without a session. Responses with status data are not cached. Invalid parameters return 422 `invalid_query`; a Spotify failure returns 502 `spotify_unavailable`. |
 
 OAuth session cookies are `HttpOnly`, `SameSite=Lax`, and `Secure` when HTTPS is used. Never expose access or refresh tokens to the frontend or logs. Sync status and durable error are owned by the Spotify module. Build a complete new Spotify snapshot and reconcile atomically: only publish it after full reconciliation succeeds. Delete no-longer-saved tracks from `SavedTrack` only; do not delete shared track/artist/album metadata merely because a saved-track relation disappeared. Preserve the previous queryable library on failure. Account switching atomically replaces, rather than mixes, libraries.
+
+The follow-status route uses Spotify's [Check User's Saved Items endpoint](https://developer.spotify.com/documentation/web-api/reference/check-library-contains), the replacement for `/me/following/contains`. It sends artist URIs in batches of at most 40. Follow status is not stored in SQLite or added to analytics and exports.
 
 ## Errors
 
