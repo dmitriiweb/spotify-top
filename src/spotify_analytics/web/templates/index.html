@@ -53,9 +53,9 @@
     <meta name="theme-color" content="#0d0a17">
     <title>Spotify Top · Saved Library Analytics</title>
     <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', path='/favicon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}?v=library-ui-4">
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}?v=library-ui-5">
     <script src="/static/plotly.min.js" defer></script>
-    <script src="{{ url_for('static', path='/app.js') }}?v=library-ui-3" defer></script>
+    <script src="{{ url_for('static', path='/app.js') }}?v=library-ui-4" defer></script>
   </head>
   <body>
     <svg class="sprite" aria-hidden="true">
@@ -236,7 +236,11 @@
               <div class="artist-summary">
                 <div id="artist-detail-avatar"></div>
                 <div class="artist-summary-copy">
-                  <h2 id="artist-detail-name" tabindex="-1"></h2><p id="artist-detail-count" class="metadata"></p>
+                  <div class="artist-detail-heading">
+                    <h2 id="artist-detail-name" tabindex="-1"></h2>
+                    <span id="artist-detail-follow-status" class="artist-follow-status" hidden></span>
+                  </div>
+                  <p id="artist-detail-count" class="metadata"></p>
                   <a id="artist-detail-link" class="panel-link" target="_blank" rel="noopener noreferrer" hidden>Open on Spotify {{ icon('external') }}</a>
                 </div>
               </div>

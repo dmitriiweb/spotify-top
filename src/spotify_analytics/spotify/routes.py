@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
+import re
 import secrets
 from dataclasses import dataclass
 from typing import Any
@@ -15,10 +16,12 @@ from starlette.datastructures import QueryParams
 
 from spotify_analytics.core.schemas import ErrorResponse, SyncStatusResponse
 from spotify_analytics.spotify.auth import COOKIE_NAME, SessionStore, authorization_url
-from spotify_analytics.spotify.client import SpotifyClient
+from spotify_analytics.spotify.client import SpotifyClient, SpotifyError
 from spotify_analytics.spotify.sync import SyncInProgress, SyncService
 
 router = APIRouter()
+_ARTIST_ID = re.compile(r"[A-Za-z0-9]{1,22}")
+_MAX_FOLLOW_IDS = 50
 
 
 @dataclass
@@ -225,6 +228,42 @@ async def callback(request: Request):
     response = RedirectResponse("/", status_code=302)
     _set_cookie(response, request, new_cookie)
     return response
+
+
+@router.get("/api/artist-follow-status")
+async def artist_follow_status(request: Request):
+    invalid = _query_error(request, {"ids"})
+    if invalid:
+        return invalid
+    ids = request.query_params.get("ids", "").split(",")
+    if len(ids) > _MAX_FOLLOW_IDS or not all(_ARTIST_ID.fullmatch(id_) for id_ in ids):
+        return _error(
+            422,
+            "invalid_query",
+            "Request validation failed",
+            [
+                {
+                    "field": "ids",
+                    "message": "must contain 1 to 50 comma-separated artist IDs",
+                }
+            ],
+        )
+
+    runtime = _runtime(request)
+    session = runtime.session_store.get(request.cookies.get(COOKIE_NAME))
+    status = {}
+    if session is not None:
+        try:
+            async with runtime.http_client_factory() as http:
+                client = SpotifyClient(
+                    http, request.app.state.settings, tokens=session.tokens
+                )
+                status = await client.artist_follow_status(list(dict.fromkeys(ids)))
+        except SpotifyError:
+            return _error(
+                502, "spotify_unavailable", "Spotify follow status is unavailable"
+            )
+    return JSONResponse(status, headers={"Cache-Control": "no-store"})
 
 
 @router.post("/api/sync")

@@ -47,7 +47,10 @@ def test_login_configuration_redirect_and_cookie_flags(tmp_path):
         response = client.get("/auth/login")
         assert response.status_code == 302
         params = parse_qs(urlsplit(response.headers["location"]).query)
-        assert params["scope"] == ["user-library-read"]
+        assert set(params["scope"][0].split()) == {
+            "user-library-read",
+            "user-follow-read",
+        }
         assert params["code_challenge_method"] == ["S256"]
         assert params["response_type"] == ["code"]
         assert params["client_id"] == ["client-id"]
@@ -101,6 +104,63 @@ def test_login_rejects_query_and_status_is_schema_valid(tmp_path):
         _error(client.post("/api/sync?unknown=1"), 422, "invalid_query")
         _error(client.post("/api/sync", json={}), 422, "invalid_query")
         _error(client.post("/api/sync"), 401, "auth_required")
+
+
+def test_artist_follow_status_batches_checks_for_the_signed_in_account(tmp_path):
+    ids = [f"{index:022d}" for index in range(50)]
+    expected = {id_: index % 3 == 0 for index, id_ in enumerate(ids)}
+    batches = []
+    malformed = False
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/token":
+            return httpx.Response(
+                200,
+                json={
+                    "access_token": "access",
+                    "refresh_token": "refresh",
+                    "expires_in": 3600,
+                },
+            )
+        assert request.headers["authorization"] == "Bearer access"
+        if request.url.path == "/v1/me":
+            return httpx.Response(200, json={"account_id": "account-1"})
+        assert request.method == "GET"
+        assert request.url.path == "/v1/me/library/contains"
+        uris = request.url.params["uris"].split(",")
+        assert all(uri.startswith("spotify:artist:") for uri in uris)
+        batch = [uri.removeprefix("spotify:artist:") for uri in uris]
+        batches.append(batch)
+        return httpx.Response(
+            200, json=[1] if malformed else [expected[id_] for id_ in batch]
+        )
+
+    app = _app(tmp_path)
+    path = "/api/artist-follow-status"
+    with TestClient(app, follow_redirects=False) as client:
+        login = client.get("/auth/login")
+        state = parse_qs(urlsplit(login.headers["location"]).query)["state"][0]
+        app.state.spotify_runtime.http_client_factory = lambda: httpx.AsyncClient(
+            transport=httpx.MockTransport(handler)
+        )
+        callback = client.get("/auth/callback", params={"code": "test", "state": state})
+        assert callback.status_code == 302
+
+        response = client.get(path, params={"ids": ",".join(ids)})
+        assert response.status_code == 200
+        assert response.json() == expected
+        assert response.headers["cache-control"] == "no-store"
+        assert batches == [ids[:40], ids[40:]]
+
+        malformed = True
+        _error(client.get(path, params={"ids": ids[0]}), 502, "spotify_unavailable")
+
+        client.cookies.clear()
+        batches.clear()
+        offline = client.get(path, params={"ids": ids[0]})
+        assert offline.status_code == 200
+        assert offline.json() == {}
+        assert not batches
 
 
 def test_callback_checks_state_before_denial_and_rejects_duplicate_parameters(tmp_path):
