@@ -154,7 +154,7 @@
       for (const [id, label] of artists) {
         const following = status[id];
         if (typeof following !== "boolean") continue;
-        label.textContent = following ? "Following" : "Not following";
+        label.replaceChildren(icon(following ? "check" : "dot"), following ? "Following" : "Not following");
         label.classList.toggle("is-following", following);
         label.hidden = false;
       }

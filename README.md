@@ -70,7 +70,7 @@ The dashboard provides:
 - **Discovery:** insights about the top saved artist, busiest saving month, and library duration, plus charts by release decade, duration, or explicit content.
 - **Settings:** Spotify connection and sync status, last successful sync, counts, and the action to synchronize the library.
 
-The top-artist list, artist directory, and artist profiles show **Following** or **Not following** for the connected Spotify account. If you already have a saved library, reconnect to approve the new permission. You do not need to sync again. Follow status is hidden in demo mode, when no account is connected, or when Spotify cannot return it.
+The top-artist list, artist directory, and artist profiles show follow status below the artist name. A pink checkmark means **Following**. A muted dot means **Not following**. If you already have a saved library, reconnect to approve the new permission. You do not need to sync again. Follow status is hidden in demo mode, when no account is connected, or when Spotify cannot return it.
 
 Use the shared search field to find track, album, or credited artist names. Open **Filters** to set inclusive saved-date bounds, explicit or clean content, or a Spotify album ID. Filters intersect and stay active when you change screens. Remove them with the filter chips or select **Clear all**.
 
